@@ -274,7 +274,12 @@ function renderSlideList() {
 }
 
 // ========== 选择幻灯片 ==========
+// 翻页方向追踪（用于动画方向）
+let lastSlideIndex = 0;
+
 function selectSlide(index) {
+  const direction = index > lastSlideIndex ? 'forward' : (index < lastSlideIndex ? 'backward' : 'none');
+  lastSlideIndex = index;
   currentIndex = index;
   const s = slides[index];
 
@@ -294,7 +299,7 @@ function selectSlide(index) {
   });
 
   toggleFieldsByLayout(s.layout);
-  updatePreview();
+  updatePreview(direction);
   renderSlideList();
 }
 
@@ -355,13 +360,23 @@ function setLayout(layout) {
 }
 
 // ========== 更新预览 ==========
-function updatePreview() {
+function updatePreview(direction) {
   const s = slides[currentIndex];
   const theme = THEMES[currentTheme];
   const fs = FONT_SIZES[s.fontSize] || FONT_SIZES.normal;
 
-  // 重置样式类
+  // 翻页动画：根据方向选择效果
   previewSlide.className = 'preview-slide';
+  if (direction === 'forward') {
+    previewSlide.classList.add('anim-slide-in');
+  } else if (direction === 'backward') {
+    previewSlide.classList.add('anim-fade-in');
+  }
+  // 动画结束后移除类名
+  setTimeout(() => {
+    previewSlide.classList.remove('anim-slide-in', 'anim-fade-in');
+  }, 500);
+
   previewTitle.style.textAlign = '';
   previewBody.style.textAlign = '';
 
@@ -455,13 +470,14 @@ function updatePreview() {
 function renderPreviewLines(container, text, fontSize, color) {
   if (!text) return;
   const lines = text.split('\n').filter(l => l.trim());
-  lines.forEach(line => {
+  lines.forEach((line, i) => {
     const p = document.createElement('p');
     p.className = 'preview-text';
     p.textContent = '• ' + line;
     p.style.fontSize = fontSize + 'px';
     p.style.color = color;
     p.style.opacity = '0.85';
+    p.style.animationDelay = (i * 0.08) + 's';
     container.appendChild(p);
   });
 }
@@ -1225,6 +1241,21 @@ document.addEventListener('keydown', (e) => {
     closeImageSearch();
     return;
   }
+  // 键盘翻页：← → 切换幻灯片（不在输入框中时生效）
+  if (e.key === 'ArrowLeft' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const el = document.activeElement;
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) { return; }
+    e.preventDefault();
+    if (currentIndex > 0) { saveCurrent(); selectSlide(currentIndex - 1); }
+    return;
+  }
+  if (e.key === 'ArrowRight' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const el = document.activeElement;
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) { return; }
+    e.preventDefault();
+    if (currentIndex < slides.length - 1) { saveCurrent(); selectSlide(currentIndex + 1); }
+    return;
+  }
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undoAction(); }
   if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redoAction(); }
   if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); exportPPTX(); }
@@ -1249,6 +1280,7 @@ setTimeout(checkAutoRestoreDraft, 1000);
 
 console.log('📊 PPT Maker Pro 已就绪');
 console.log('   AI 后端:', API_BASE);
-console.log('   快捷键: Ctrl+Z 撤销 | Ctrl+Y 重做 | Ctrl+S 导出 | Ctrl+N 新建 | Ctrl+D 复制 | Ctrl+↑↓ 排序');
+console.log('   快捷键: ←→ 翻页 | Ctrl+Z 撤销 | Ctrl+Y 重做 | Ctrl+S 导出 | Ctrl+N 新建 | Ctrl+D 复制 | Ctrl+↑↓ 排序');
+console.log('   翻页动画: 前进=滑入 | 后退=淡入 | 内容=逐条弹入');
 console.log('   图片搜索: 点击「🔍 搜图」搜索高质量免费图片');
 console.log('   AI 生成: 输入主题 → 点击 ✨生成 → 自动填充幻灯片');

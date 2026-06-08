@@ -367,6 +367,92 @@
   gap: 8px;
 }
 
+/* ========== 翻页过渡动画 ========== */
+.preview-slide {
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.preview-slide.anim-slide-in {
+  animation: slideIn 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.preview-slide.anim-fade-in {
+  animation: fadeSlideIn 0.45s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(40px) scale(0.96); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 逐条内容入场 */
+.preview-text {
+  animation: bulletIn 0.4s ease both;
+}
+
+@keyframes bulletIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 0.85; transform: translateX(0); }
+}
+
+/* 图片入场 */
+.preview-slide img {
+  animation: imgReveal 0.5s ease both;
+}
+
+@keyframes imgReveal {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* 翻页方向指示器 */
+.slide-transition-indicator {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 28px;
+  color: rgba(255,255,255,0.6);
+  pointer-events: none;
+  z-index: 10;
+  animation: arrowPulse 0.6s ease forwards;
+}
+
+.slide-transition-indicator.left  { left: 10px; }
+.slide-transition-indicator.right { right: 10px; }
+
+@keyframes arrowPulse {
+  0%   { opacity: 0; transform: translateY(-50%) scale(0.5); }
+  50%  { opacity: 1; transform: translateY(-50%) scale(1.3); }
+  100% { opacity: 0; transform: translateY(-50%) scale(0.8); }
+}
+
+/* 键盘翻页模式提示 */
+.preview-slide.keyboard-nav {
+  cursor: pointer;
+  position: relative;
+}
+
+.preview-box.keyboard-nav-active {
+  position: relative;
+}
+
+.preview-box.keyboard-nav-active::before {
+  content: '← 键盘 ← → 翻页 →';
+  position: absolute;
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: #aaa;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 /* ========== 右侧编辑区 ========== */
 .slide-editor {
   flex: 1;
