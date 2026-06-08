@@ -24,7 +24,4 @@
       "dest": "/index.html"
     }
   ],
-  "env": {
-    "DEEPSEEK_API_KEY": "@deepseek-api-key"
-  }
 }
