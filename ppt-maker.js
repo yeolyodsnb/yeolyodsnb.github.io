@@ -467,8 +467,10 @@ function renderPreviewLines(container, text, fontSize, color) {
 }
 
 function renderPreviewImage() {
+  const imgSrc = slides[currentIndex].image;
+  if (!imgSrc) { previewImage.style.display = 'none'; return; }
   previewImage.style.display = '';
-  previewImage.src = slideImage.value;
+  previewImage.src = imgSrc;
   previewImage.onerror = () => { previewImage.style.display = 'none'; };
 }
 
@@ -1052,6 +1054,10 @@ async function handleAIGenerate() {
       const imgUrl = await fetchBestImage(s.imageKeyword.trim());
       if (imgUrl) {
         slides[s.index].image = imgUrl;
+        // 同步 DOM 输入框
+        if (s.index === currentIndex) {
+          slideImage.value = imgUrl;
+        }
         done++;
         aiProgress.innerHTML = `<span class="spinner"></span> 🖼️ 配图进度：${done}/${slidesWithKeywords.length} — 刚完成「${s.title}」`;
       }
@@ -1060,6 +1066,8 @@ async function handleAIGenerate() {
     await Promise.allSettled(imagePromises);
     // 刷新当前选中页的预览
     updatePreview();
+    // 同步列表显示
+    renderSlideList();
     toast(`✅ 生成完成！${slides.length} 页幻灯片，${done} 页已自动配图`);
   } else {
     toast(`✅ 已生成 ${slides.length} 页幻灯片！`);
