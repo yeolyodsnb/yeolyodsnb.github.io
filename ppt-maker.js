@@ -66,6 +66,7 @@ function pushHistory() {
   if (history.length > HISTORY_LIMIT) history.shift();
   historyIndex = history.length - 1;
   updateUndoRedoBtns();
+  autoSaveDraft();  // 每次修改自动保存草稿
 }
 
 function updateUndoRedoBtns() {
@@ -86,6 +87,7 @@ function undoAction() {
   selectSlide(currentIndex);
   _suppressHistory = false;
   updateUndoRedoBtns();
+  autoSaveDraft();  // 撤销后自动保存
   toast('↩ 已撤销');
 }
 
@@ -100,12 +102,39 @@ function redoAction() {
   selectSlide(currentIndex);
   _suppressHistory = false;
   updateUndoRedoBtns();
+  autoSaveDraft();  // 重做后自动保存
   toast('↪ 已重做');
 }
 
 // ========== 草稿保存 ==========
 const DRAFT_KEY = 'ppt_maker_draft';
 const DRAFT_THEME_KEY = 'ppt_maker_theme';
+
+// ========== 自动保存草稿 ==========
+const AUTO_SAVE_KEY = 'auto_saved_ppt_draft';
+
+function autoSaveDraft() {
+  try {
+    saveCurrent();
+    const data = { slides, theme: currentTheme, currentIndex, ts: Date.now() };
+    localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(data));
+  } catch (e) { /* 存储满或不可用，静默失败 */ }
+}
+
+function autoRestoreDraft() {
+  try {
+    const raw = localStorage.getItem(AUTO_SAVE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (!Array.isArray(data.slides) || data.slides.length === 0) return false;
+    slides = data.slides;
+    currentIndex = Math.min(data.currentIndex || 0, slides.length - 1);
+    if (data.theme && THEMES[data.theme]) currentTheme = data.theme;
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
 
 function saveDraft() {
   saveCurrent();
@@ -549,6 +578,7 @@ function setTheme(name, applyToAll) {
     slides[currentIndex].bgColor = '';
   }
   updatePreview();
+  autoSaveDraft();  // 主题变更自动保存
 }
 
 // ========== 幻灯片操作 ==========
@@ -600,178 +630,193 @@ function duplicateSlide() {
 function exportPPTX() {
   saveCurrent();
 
+  // 检查库是否加载
   if (typeof PptxGenJS === 'undefined') {
-    toast('PPT 库加载中，请稍候...'); return;
+    console.error('❌ 导出失败：PptxGenJS 库未加载。CDN 可能被拦截或网络异常。');
+    toast('❌ PPT 库未加载，请刷新页面后重试');
+    return;
   }
 
-  const pptx = new PptxGenJS();
-  const theme = THEMES[currentTheme];
-  pptx.defineLayout({ name: 'WIDE', width: '13.333', height: '7.5' });
-  pptx.layout = 'WIDE';
+  console.log('📥 开始导出 PPTX，共 ' + slides.length + ' 页...');
 
-  slides.forEach((slide, idx) => {
-    const s = pptx.addSlide();
-    const fs = FONT_SIZES[slide.fontSize] || FONT_SIZES.normal;
-    // 背景色：AI 指定优先，兜底用主题色
-    const slideBg = (slide.bgColor && slide.bgColor.startsWith('#')) ? slide.bgColor : theme.bg;
-    s.background = { color: slideBg };
+  try {
+    const pptx = new PptxGenJS();
+    const theme = THEMES[currentTheme];
 
-    // 顶部装饰条
-    s.addShape(pptx.ShapeType.rect, {
-      x: 0, y: 0, w: '100%', h: 0.1, fill: { color: theme.accent },
-    });
+    // 设置版面（使用内置 16:9 宽屏，13.333 x 7.5 英寸）
+    pptx.layout = 'LAYOUT_WIDE';
 
-    // 页码
-    s.addText(`${idx + 1} / ${slides.length}`, {
-      x: 11.5, y: 7.0, w: 1.5, h: 0.4,
-      fontSize: 9, color: theme.accent, fontFace: 'Microsoft YaHei', align: 'right',
-    });
+    slides.forEach((slide, idx) => {
+      const s = pptx.addSlide();
+      const fs = FONT_SIZES[slide.fontSize] || FONT_SIZES.normal;
+      const slideBg = (slide.bgColor && slide.bgColor.startsWith('#')) ? slide.bgColor : theme.bg;
+      s.background = { color: slideBg.replace('#', '') };
 
-    // 标题位置
-    const titleY = slide.titlePos === 'middle' ? 2.4 : 0.8;
+      // 顶部装饰条
+      s.addShape('rect', {
+        x: 0, y: 0, w: 13.333, h: 0.1,
+        fill: { color: theme.accent.replace('#', '') },
+      });
 
-    // 根据布局导出
-    switch (slide.layout) {
-      case 'title':
-        // 居中标题页
-        if (slide.title) {
-          s.addText(slide.title, {
-            x: 1.5, y: 2.5, w: 10.333, h: 1.2,
-            fontSize: fs.exportTitle, bold: true, color: theme.text,
-            fontFace: 'Microsoft YaHei', align: 'center',
-          });
-        }
-        if (slide.subtitle) {
-          s.addText(slide.subtitle, {
-            x: 2, y: 3.8, w: 9.333, h: 0.8,
-            fontSize: 18, color: theme.accent,
-            fontFace: 'Microsoft YaHei', align: 'center',
-          });
-        }
-        break;
+      // 页码
+      s.addText(`${idx + 1} / ${slides.length}`, {
+        x: 11.5, y: 7.0, w: 1.5, h: 0.4,
+        fontSize: 9, color: theme.accent.replace('#', ''),
+        fontFace: 'Microsoft YaHei', align: 'right',
+      });
 
-      case 'content':
-        exportTitleAndBody(s, slide, theme, fs, titleY);
-        if (slide.image) exportImage(s, slide.image, 9, 2, 3.7, 3.7);
-        break;
+      const titleY = slide.titlePos === 'middle' ? 2.4 : 0.8;
+      const textColor = theme.text.replace('#', '');
+      const accentColor = theme.accent.replace('#', '');
 
-      case 'two-column':
-        // 双栏
-        if (slide.title) {
-          s.addText(slide.title, {
-            x: 1, y: titleY, w: 11.333, h: 0.9,
-            fontSize: fs.exportTitle, bold: true, color: theme.text,
-            fontFace: 'Microsoft YaHei', align: slide.textAlign,
-          });
-        }
-        if (slide.content) {
-          const lines = slide.content.split('\n').filter(l => l.trim());
-          s.addText(lines.map((l, i) => ({
-            text: l, options: {
-              fontSize: fs.exportBody, color: theme.text, fontFace: 'Microsoft YaHei',
-              bullet: { type: 'number' }, paraSpaceAfter: 6,
-            },
-          })), {
-            x: 1, y: titleY + 1.2, w: 5.2, h: 4.5, valign: 'top',
-          });
-        }
-        if (slide.content2) {
-          const lines2 = slide.content2.split('\n').filter(l => l.trim());
-          s.addText(lines2.map((l, i) => ({
-            text: l, options: {
-              fontSize: fs.exportBody, color: theme.text, fontFace: 'Microsoft YaHei',
-              bullet: { type: 'number' }, paraSpaceAfter: 6,
-            },
-          })), {
-            x: 7, y: titleY + 1.2, w: 5.2, h: 4.5, valign: 'top',
-          });
-        }
-        // 中间分隔线
-        s.addShape(pptx.ShapeType.rect, {
-          x: 6.55, y: titleY + 1.2, w: 0.04, h: 4.5, fill: { color: theme.accent },
-        });
-        break;
-
-      case 'image-text':
-        // 图文混排
-        if (slide.title) {
-          s.addText(slide.title, {
-            x: 1, y: titleY, w: 6.5, h: 0.9,
-            fontSize: fs.exportTitle, bold: true, color: theme.text,
-            fontFace: 'Microsoft YaHei', align: slide.textAlign,
-          });
-        }
-        if (slide.content) {
-          const lines = slide.content.split('\n').filter(l => l.trim());
-          s.addText(lines.map((l, i) => ({
-            text: l, options: {
-              fontSize: fs.exportBody, color: theme.text, fontFace: 'Microsoft YaHei',
-              bullet: { type: 'number' }, paraSpaceAfter: 6,
-            },
-          })), {
-            x: 1, y: titleY + 1.2, w: 6.5, h: 4.5, valign: 'top',
-          });
-        }
-        if (slide.image) exportImage(s, slide.image, 8.2, 1.5, 4.5, 4.8);
-        break;
-
-      case 'image-only':
-        // 图片页
-        if (slide.image) {
-          s.addImage({
-            path: slide.image,
-            x: 0, y: 0, w: '100%', h: '100%',
-            sizing: { type: 'cover', w: '100%', h: '100%' },
-          }).catch(() => {});
-        }
-        if (slide.title || slide.subtitle) {
-          // 底部半透明文字条
-          s.addShape(pptx.ShapeType.rect, {
-            x: 0, y: 5.8, w: '100%', h: 1.7,
-            fill: { color: '000000', transparency: 40 },
-          });
+      switch (slide.layout) {
+        case 'title':
           if (slide.title) {
             s.addText(slide.title, {
-              x: 1, y: 5.9, w: '11.333', h: 0.8,
-              fontSize: 24, bold: true, color: 'FFFFFF', fontFace: 'Microsoft YaHei',
+              x: 1.5, y: 2.5, w: 10.333, h: 1.2,
+              fontSize: fs.exportTitle, bold: true, color: textColor,
+              fontFace: 'Microsoft YaHei', align: 'center',
             });
           }
           if (slide.subtitle) {
             s.addText(slide.subtitle, {
-              x: 1, y: 6.6, w: '11.333', h: 0.6,
-              fontSize: 14, color: 'DDDDDD', fontFace: 'Microsoft YaHei',
+              x: 2, y: 3.8, w: 9.333, h: 0.8,
+              fontSize: 18, color: accentColor,
+              fontFace: 'Microsoft YaHei', align: 'center',
             });
           }
-        }
-        break;
+          break;
 
-      default:
-        exportTitleAndBody(s, slide, theme, fs, titleY);
-    }
+        case 'content':
+          exportTitleAndBody(s, slide, theme, fs, titleY);
+          if (slide.image) exportImage(s, slide.image, 9, 2, 3.7, 3.7);
+          break;
 
-    // 底部装饰条
-    s.addShape(pptx.ShapeType.rect, {
-      x: 0, y: 7.4, w: '100%', h: 0.1, fill: { color: theme.accent },
+        case 'two-column':
+          if (slide.title) {
+            s.addText(slide.title, {
+              x: 1, y: titleY, w: 11.333, h: 0.9,
+              fontSize: fs.exportTitle, bold: true, color: textColor,
+              fontFace: 'Microsoft YaHei', align: slide.textAlign,
+            });
+          }
+          if (slide.content) {
+            const lines = slide.content.split('\n').filter(l => l.trim());
+            s.addText(lines.map((l) => ({
+              text: l, options: {
+                fontSize: fs.exportBody, color: textColor, fontFace: 'Microsoft YaHei',
+                bullet: true, paraSpaceAfter: 6,
+              },
+            })), {
+              x: 1, y: titleY + 1.2, w: 5.2, h: 4.5, valign: 'top',
+            });
+          }
+          if (slide.content2) {
+            const lines2 = slide.content2.split('\n').filter(l => l.trim());
+            s.addText(lines2.map((l) => ({
+              text: l, options: {
+                fontSize: fs.exportBody, color: textColor, fontFace: 'Microsoft YaHei',
+                bullet: true, paraSpaceAfter: 6,
+              },
+            })), {
+              x: 7, y: titleY + 1.2, w: 5.2, h: 4.5, valign: 'top',
+            });
+          }
+          s.addShape('rect', {
+            x: 6.55, y: titleY + 1.2, w: 0.04, h: 4.5,
+            fill: { color: accentColor },
+          });
+          break;
+
+        case 'image-text':
+          if (slide.title) {
+            s.addText(slide.title, {
+              x: 1, y: titleY, w: 6.5, h: 0.9,
+              fontSize: fs.exportTitle, bold: true, color: textColor,
+              fontFace: 'Microsoft YaHei', align: slide.textAlign,
+            });
+          }
+          if (slide.content) {
+            const lines = slide.content.split('\n').filter(l => l.trim());
+            s.addText(lines.map((l) => ({
+              text: l, options: {
+                fontSize: fs.exportBody, color: textColor, fontFace: 'Microsoft YaHei',
+                bullet: true, paraSpaceAfter: 6,
+              },
+            })), {
+              x: 1, y: titleY + 1.2, w: 6.5, h: 4.5, valign: 'top',
+            });
+          }
+          if (slide.image) exportImage(s, slide.image, 8.2, 1.5, 4.5, 4.8);
+          break;
+
+        case 'image-only':
+          if (slide.image) {
+            try { s.addImage({ path: slide.image, x: 0, y: 0, w: 13.333, h: 7.5 }); }
+            catch (_) { console.warn('⚠️ 图片加载失败：', slide.image); }
+          }
+          if (slide.title || slide.subtitle) {
+            s.addShape('rect', {
+              x: 0, y: 5.8, w: 13.333, h: 1.7,
+              fill: { color: '000000', transparency: 40 },
+            });
+            if (slide.title) {
+              s.addText(slide.title, {
+                x: 1, y: 5.9, w: 11.333, h: 0.8,
+                fontSize: 24, bold: true, color: 'FFFFFF', fontFace: 'Microsoft YaHei',
+              });
+            }
+            if (slide.subtitle) {
+              s.addText(slide.subtitle, {
+                x: 1, y: 6.6, w: 11.333, h: 0.6,
+                fontSize: 14, color: 'DDDDDD', fontFace: 'Microsoft YaHei',
+              });
+            }
+          }
+          break;
+
+        default:
+          exportTitleAndBody(s, slide, theme, fs, titleY);
+      }
+
+      // 底部装饰条
+      s.addShape('rect', {
+        x: 0, y: 7.4, w: 13.333, h: 0.1,
+        fill: { color: accentColor },
+      });
+
+      // 备注
+      if (slide.note) {
+        s.addNotes(slide.note);
+      }
     });
 
-    // 备注
-    if (slide.note) {
-      s.addNotes(slide.note);
-    }
-  });
-
-  // 下载
-  const fname = exportFileName.value.trim() || '演示文稿';
-  pptx.writeFile({ fileName: fname + '.pptx' })
-    .then(() => toast('✅ 导出成功！'))
-    .catch(() => toast('导出失败，请重试'));
+    // 下载
+    const fname = exportFileName.value.trim() || '演示文稿';
+    pptx.writeFile({ fileName: fname + '.pptx' })
+      .then(() => {
+        console.log('✅ PPTX 导出成功：' + fname + '.pptx');
+        toast('✅ 导出成功！');
+      })
+      .catch((err) => {
+        console.error('❌ writeFile 失败：', err);
+        toast('❌ 导出失败：' + (err.message || '未知错误'));
+      });
+  } catch (err) {
+    console.error('❌ 导出过程出错：', err);
+    console.error('   错误类型：', err.name);
+    console.error('   错误信息：', err.message);
+    console.error('   堆栈：', err.stack);
+    toast('❌ 导出失败：' + err.message);
+  }
 }
 
 function exportTitleAndBody(s, slide, theme, fs, titleY) {
+  const textColor = theme.text.replace('#', '');
   if (slide.title) {
     s.addText(slide.title, {
       x: 1, y: titleY, w: 11.333, h: 0.9,
-      fontSize: fs.exportTitle, bold: true, color: theme.text,
+      fontSize: fs.exportTitle, bold: true, color: textColor,
       fontFace: 'Microsoft YaHei', align: slide.textAlign,
     });
   }
@@ -780,10 +825,10 @@ function exportTitleAndBody(s, slide, theme, fs, titleY) {
     const align = slide.textAlign;
     const bodyX = align === 'center' ? 1.5 : 1.2;
     const bodyW = align === 'center' ? 10.333 : 10.933;
-    s.addText(lines.map((l, i) => ({
+    s.addText(lines.map((l) => ({
       text: l, options: {
-        fontSize: fs.exportBody, color: theme.text, fontFace: 'Microsoft YaHei',
-        bullet: { type: 'number' }, paraSpaceAfter: 6, align: align,
+        fontSize: fs.exportBody, color: textColor, fontFace: 'Microsoft YaHei',
+        bullet: true, paraSpaceAfter: 6, align: align,
       },
     })), {
       x: bodyX, y: titleY + 1.2, w: bodyW, h: 4.5, valign: 'top',
@@ -792,8 +837,8 @@ function exportTitleAndBody(s, slide, theme, fs, titleY) {
 }
 
 function exportImage(s, url, x, y, w, h) {
-  s.addImage({ path: url, x, y, w, h, sizing: { type: 'contain', w, h } })
-    .catch(() => {});
+  try { s.addImage({ path: url, x: x, y: y, w: w, h: h }); }
+  catch (_) { console.warn('⚠️ 图片加载失败：', url); }
 }
 
 // ========== 图片搜索引擎 ==========
@@ -1141,6 +1186,9 @@ async function handleAIGenerate() {
     toast(`✅ 已生成 ${slides.length} 页幻灯片！`);
   }
 
+  // AI 生成后自动保存草稿
+  autoSaveDraft();
+
   // 恢复 UI
   aiGenerateBtn.disabled = false;
   aiProgress.style.display = 'none';
@@ -1339,20 +1387,34 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ========== 初始化 ==========
+// 1. 尝试自动恢复上一次的编辑进度
+const restored = autoRestoreDraft();
+
+if (restored) {
+  console.log('📂 自动恢复草稿：' + slides.length + ' 页，主题：' + currentTheme);
+}
+
 renderSlideList();
 selectSlide(0);
-setTheme('purple');
+setTheme(restored ? currentTheme : 'purple');
 pushHistory();        // 记录初始状态
 updateUndoRedoBtns();
 
 // 检测 AI 后端
 checkBackendHealth();
 
-// 草稿恢复提示
-setTimeout(checkAutoRestoreDraft, 1000);
+// 2. 自动恢复成功后提示用户（延迟显示，避免 toast 被初始化覆盖）
+if (restored) {
+  setTimeout(() => {
+    const date = new Date(JSON.parse(localStorage.getItem(AUTO_SAVE_KEY)).ts);
+    const timeStr = `${date.getMonth()+1}/${date.getDate()} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+    toast('📂 已自动为您恢复上一次的编辑进度（' + timeStr + '）');
+  }, 600);
+}
 
 console.log('📊 PPT Maker Pro 已就绪');
 console.log('   AI 后端:', API_BASE);
+console.log('   自动保存:', restored ? '✅ 已恢复 ' + slides.length + ' 页草稿' : '📝 新文档');
 console.log('   快捷键: ←→ 翻页 | Ctrl+Z 撤销 | Ctrl+Y 重做 | Ctrl+S 导出 | Ctrl+N 新建 | Ctrl+D 复制 | Ctrl+↑↓ 排序');
 console.log('   翻页动画: 前进=滑入 | 后退=淡入 | 内容=逐条弹入');
 console.log('   图片搜索: 点击「🔍 搜图」搜索高质量免费图片');
