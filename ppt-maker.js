@@ -30,25 +30,26 @@ const FONT_SIZES = {
 };
 
 // ========== AI 生成配置 ==========
-// 后端地址配置
-// 本地开发 → localhost:3001
-// 线上版本 → 自动检测：如果当前域名有后端就用当前域名，否则使用 localStorage 保存的地址
+// 后端地址：本地开发 → localhost:3001，线上 → Vercel 云端
 const API_BASE = (() => {
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    // 本地开发：连本地后端，支持自定义端口
-    return `http://localhost:${new URLSearchParams(window.location.search).get('port') || '3001'}`;
-  }
-  // 生产环境：优先使用 localStorage 中用户保存的后端地址
-  let savedBackend = (localStorage.getItem('ai_backend_url') || '').trim().replace(/^["']+|["']+$/g, '');
-  if (savedBackend && savedBackend.startsWith('http')) return savedBackend;
-  // 清除无效的旧值（空字符串、非 URL 等）
-  if (savedBackend) localStorage.removeItem('ai_backend_url');
-  // GitHub Pages 默认连接 Vercel 后端
-  if (window.location.hostname.endsWith('github.io')) {
+  try {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return `http://localhost:${new URLSearchParams(window.location.search).get('port') || '3001'}`;
+    }
+    // 生产环境：优先读取用户自定义地址
+    let savedBackend = '';
+    try { savedBackend = (localStorage.getItem('ai_backend_url') || '').trim().replace(/^["']+|["']+$/g, ''); } catch (_) {}
+    if (savedBackend && savedBackend.startsWith('http')) return savedBackend;
+    // GitHub Pages → Vercel 后端
+    if (window.location.hostname.endsWith('github.io')) {
+      return 'https://ppt-maker-api.vercel.app';
+    }
+    // 其他环境使用同域
+    return window.location.origin;
+  } catch (_) {
+    // 极端兜底：任何异常都返回 Vercel 地址
     return 'https://ppt-maker-api.vercel.app';
   }
-  // 其他生产环境（如 Vercel）使用当前域名
-  return window.location.origin;
 })();
 
 // ========== 撤销/重做历史 ==========
