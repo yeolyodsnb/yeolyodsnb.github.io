@@ -62,6 +62,7 @@ function buildSystemPrompt(slideCount) {
 - 副标题/结束语：有温度，不套路
 
 只输出 JSON，无 Markdown 标记。`;
+}
 
 // ---- 健康检查 ----
 app.get('/api/health', (req, res) => {
