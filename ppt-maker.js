@@ -39,8 +39,10 @@ const API_BASE = (() => {
     return `http://localhost:${new URLSearchParams(window.location.search).get('port') || '3001'}`;
   }
   // 生产环境：优先使用 localStorage 中用户保存的后端地址
-  const savedBackend = localStorage.getItem('ai_backend_url');
-  if (savedBackend) return savedBackend;
+  let savedBackend = (localStorage.getItem('ai_backend_url') || '').trim().replace(/^["']+|["']+$/g, '');
+  if (savedBackend && savedBackend.startsWith('http')) return savedBackend;
+  // 清除无效的旧值（空字符串、非 URL 等）
+  if (savedBackend) localStorage.removeItem('ai_backend_url');
   // GitHub Pages 默认连接 Vercel 后端
   if (window.location.hostname.endsWith('github.io')) {
     return 'https://ppt-maker-api.vercel.app';
@@ -952,7 +954,7 @@ async function checkBackendHealth() {
   }
   console.log('🔍 检测后端:', `${API_BASE}/api/health`);
   try {
-    const resp = await timeoutFetch(`${API_BASE}/api/health`, {}, 3000);
+    const resp = await timeoutFetch(`${API_BASE}/api/health`, {}, 8000);
     const data = await resp.json();
     if (data.status === 'ok') {
       aiStatusDot.innerHTML = '● 后端在线';
