@@ -56,8 +56,10 @@ nav {
   transition: color 0.2s;
 }
 
-.nav-links a:hover {
+.nav-links a:hover,
+.nav-links a.active {
   color: #6c5ce7;
+  font-weight: bold;
 }
 
 /* ========== 首页大图 ========== */

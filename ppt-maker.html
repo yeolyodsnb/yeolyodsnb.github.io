@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PPT 制作工具 - yeol</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="ppt-maker.css">
+  <script src="https://cdn.jsdelivr.net/gh/gitbrent/PptxGenJS@3.12.0/dist/pptxgen.bundle.js"></script>
+</head>
+<body>
+
+  <!-- 导航栏 -->
+  <nav>
+    <div class="nav-inner">
+      <a href="index.html" class="logo">🌟 yeol</a>
+      <ul class="nav-links">
+        <li><a href="index.html">首页</a></li>
+        <li><a href="index.html#about">关于我</a></li>
+        <li><a href="index.html#projects">项目</a></li>
+        <li><a href="ppt-maker.html" class="active">制作PPT</a></li>
+        <li><a href="index.html#contact">联系</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- 主内容 -->
+  <main class="ppt-maker-container">
+    <!-- 左侧：幻灯片列表 -->
+    <aside class="slide-sidebar">
+      <div class="sidebar-header">
+        <h2>📑 幻灯片</h2>
+        <button id="addSlideBtn" class="btn-small" title="添加新幻灯片">+ 添加</button>
+      </div>
+      <ul id="slideList" class="slide-list"></ul>
+      <div class="sidebar-footer">
+        <button id="exportBtn" class="btn-export">📥 导出 PPTX</button>
+      </div>
+    </aside>
+
+    <!-- 右侧：编辑区域 -->
+    <section class="slide-editor">
+      <div class="editor-header">
+        <h2>✏️ 编辑幻灯片</h2>
+        <button id="deleteSlideBtn" class="btn-danger" title="删除当前幻灯片">🗑 删除</button>
+      </div>
+
+      <!-- 模板选择 -->
+      <div class="editor-group">
+        <label>🎨 配色模板</label>
+        <div class="theme-picker" id="themePicker">
+          <button class="theme-dot active" data-theme="purple" style="background:#6c5ce7" title="紫色"></button>
+          <button class="theme-dot" data-theme="blue" style="background:#0984e3" title="蓝色"></button>
+          <button class="theme-dot" data-theme="green" style="background:#00b894" title="绿色"></button>
+          <button class="theme-dot" data-theme="orange" style="background:#e17055" title="橙色"></button>
+          <button class="theme-dot" data-theme="dark" style="background:#2d3436" title="深色"></button>
+          <button class="theme-dot" data-theme="red" style="background:#d63031" title="红色"></button>
+        </div>
+      </div>
+
+      <!-- 幻灯片标题 -->
+      <div class="editor-group">
+        <label for="slideTitle">📌 幻灯片标题</label>
+        <input id="slideTitle" type="text" placeholder="输入标题..." maxlength="100">
+      </div>
+
+      <!-- 幻灯片内容 -->
+      <div class="editor-group">
+        <label for="slideContent">📝 内容</label>
+        <textarea id="slideContent" rows="8" placeholder="输入内容，每行一个要点..."></textarea>
+      </div>
+
+      <!-- 图片（可选） -->
+      <div class="editor-group">
+        <label for="slideImage">🖼️ 图片链接（可选）</label>
+        <input id="slideImage" type="text" placeholder="粘贴图片URL...">
+      </div>
+
+      <!-- 预览区 -->
+      <div class="editor-group">
+        <label>👁 预览</label>
+        <div id="previewArea" class="preview-box">
+          <div id="previewContent" class="preview-slide">
+            <h3 id="previewTitle">标题预览</h3>
+            <div id="previewBody">内容预览</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 yeol. Powered by GitHub Pages.</p>
+  </footer>
+
+  <script src="ppt-maker.js"></script>
+</body>
+</html>
