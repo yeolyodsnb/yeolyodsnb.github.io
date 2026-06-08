@@ -553,8 +553,8 @@ function exportImage(s, url, x, y, w, h) {
     .catch(() => {});
 }
 
-// ========== 图片搜索 ==========
-const UNSPLASH_ACCESS_KEY = 'b2e4f6c8a0d1e3f5b7c9d2e4f6a8b0c1d3e5f7a9b1c3d5e7f9a1b3c5d7e9f1';
+// ========== 图片搜索引擎 ==========
+// 双模式：Unsplash API（需 Key，高质量搜索） + Source 模式（无需 Key，开箱即用）
 
 const imgSearchOverlay   = $('imageSearchOverlay');
 const imgSearchInput     = $('imgSearchInput');
@@ -563,9 +563,50 @@ const imgSearchResults   = $('imgSearchResults');
 const imgSearchLoading   = $('imgSearchLoading');
 const openImgSearchBtn   = $('openImageSearchBtn');
 const closeImgSearchBtn  = $('closeImgSearchBtn');
+const apiKeyInput        = $('unsplashApiKeyInput');
+const apiKeyStatus       = $('apiKeyStatus');
+const apiKeySection      = $('apiKeySection');
+
+// 从 localStorage 读取用户自己的 API Key
+function getApiKey() {
+  return (localStorage.getItem('unsplash_api_key') || '').trim();
+}
+
+function saveApiKey(key) {
+  localStorage.setItem('unsplash_api_key', key.trim());
+}
+
+function updateApiKeyUI() {
+  const key = getApiKey();
+  apiKeyInput.value = key;
+  if (key) {
+    apiKeyStatus.textContent = '✅ API Key 已配置';
+    apiKeyStatus.style.color = '#27ae60';
+  } else {
+    apiKeyStatus.textContent = '未配置（仍可使用 Source 模式搜索）';
+    apiKeyStatus.style.color = '#999';
+  }
+}
+
+// 暴露给 HTML onclick
+window.toggleApiSection = function() {
+  apiKeySection.style.display = apiKeySection.style.display === 'none' ? '' : 'none';
+};
+
+window.saveAndCloseApi = function() {
+  const key = apiKeyInput.value.trim();
+  if (key) {
+    saveApiKey(key);
+    updateApiKeyUI();
+    toast('✅ API Key 已保存');
+  }
+  apiKeySection.style.display = 'none';
+};
 
 function openImageSearch() {
   imgSearchOverlay.style.display = '';
+  updateApiKeyUI();
+  apiKeySection.style.display = 'none';
   imgSearchInput.focus();
 }
 
@@ -573,42 +614,89 @@ function closeImageSearch() {
   imgSearchOverlay.style.display = 'none';
 }
 
+// ========== 模式一：Unsplash API 搜索（需 Key） ==========
+async function searchImagesViaAPI(query, apiKey) {
+  const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=12&client_id=${apiKey}&lang=zh`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error('API error: ' + resp.status);
+  const data = await resp.json();
+
+  if (!data.results || data.results.length === 0) return false;
+
+  data.results.forEach(photo => {
+    const card = document.createElement('div');
+    card.className = 'img-result-card';
+    card.title = `📷 ${photo.user.name} — 点击插入`;
+    card.innerHTML = `
+      <img src="${photo.urls.small}" alt="${photo.alt_description || query}" loading="lazy">
+      <span class="img-author">📷 ${photo.user.name}</span>
+    `;
+    card.addEventListener('click', () => {
+      slideImage.value = photo.urls.regular;
+      slides[currentIndex].image = photo.urls.regular;
+      updatePreview();
+      closeImageSearch();
+      toast('✅ 图片已插入！');
+    });
+    imgSearchResults.appendChild(card);
+  });
+  return true;
+}
+
+// ========== 模式二：Source 模式搜索（无需 Key，使用 source.unsplash.com） ==========
+function searchImagesViaSource(query) {
+  // 用不同 seed 生成 12 张不同图片
+  const seeds = [1,2,3,4,5,6,7,8,9,10,11,12];
+  seeds.forEach(n => {
+    const thumbUrl = `https://source.unsplash.com/300x225/?${encodeURIComponent(query)}&seed=${n}&v=${Date.now()}`;
+    const fullUrl  = `https://source.unsplash.com/1200x900/?${encodeURIComponent(query)}&seed=${n}`;
+
+    const card = document.createElement('div');
+    card.className = 'img-result-card';
+    card.title = '点击插入此图片';
+    card.innerHTML = `
+      <img src="${thumbUrl}" alt="${query}" loading="lazy" onerror="this.parentElement.style.display='none'">
+      <span class="img-author">🖼️ source.unsplash.com</span>
+    `;
+    card.addEventListener('click', () => {
+      slideImage.value = fullUrl;
+      slides[currentIndex].image = fullUrl;
+      updatePreview();
+      closeImageSearch();
+      toast('✅ 图片已插入！');
+    });
+    imgSearchResults.appendChild(card);
+  });
+}
+
+// ========== 统一搜索入口 ==========
 async function searchImages(query) {
   imgSearchResults.innerHTML = '';
   imgSearchLoading.style.display = '';
+  const apiKey = getApiKey();
+
   try {
-    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=12&client_id=${UNSPLASH_ACCESS_KEY}&lang=zh`;
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error('API error');
-    const data = await resp.json();
-    imgSearchLoading.style.display = 'none';
-
-    if (!data.results || data.results.length === 0) {
-      imgSearchResults.innerHTML = '<p class="img-search-empty">😕 没有找到相关图片，换个关键词试试</p>';
-      return;
+    if (apiKey) {
+      // 优先使用 API 模式
+      const success = await searchImagesViaAPI(query, apiKey);
+      imgSearchLoading.style.display = 'none';
+      if (success === false) {
+        imgSearchResults.innerHTML = '<p class="img-search-empty">😕 没有找到相关图片，换个关键词试试</p>';
+      }
+    } else {
+      // 无 Key，使用 Source 模式
+      imgSearchLoading.style.display = 'none';
+      searchImagesViaSource(query);
     }
-
-    data.results.forEach(photo => {
-      const card = document.createElement('div');
-      card.className = 'img-result-card';
-      card.title = `作者: ${photo.user.name} — 点击插入`;
-      card.innerHTML = `
-        <img src="${photo.urls.small}" alt="${photo.alt_description || query}" loading="lazy">
-        <span class="img-author">📷 ${photo.user.name}</span>
-      `;
-      card.addEventListener('click', () => {
-        slideImage.value = photo.urls.regular;
-        slides[currentIndex].image = photo.urls.regular;
-        updatePreview();
-        closeImageSearch();
-        toast('✅ 图片已插入！');
-      });
-      imgSearchResults.appendChild(card);
-    });
   } catch (err) {
+    console.error('API 搜索失败，降级到 Source 模式:', err);
     imgSearchLoading.style.display = 'none';
-    imgSearchResults.innerHTML = '<p class="img-search-empty">⚠️ 搜索失败，请检查网络后重试</p>';
-    console.error('图片搜索失败:', err);
+    imgSearchResults.innerHTML = '';
+    searchImagesViaSource(query);
+    // 如果之前有 Key 但失效了，提示用户
+    if (apiKey) {
+      setTimeout(() => toast('⚠️ API Key 无效，已自动切换到备用搜索'), 500);
+    }
   }
 }
 

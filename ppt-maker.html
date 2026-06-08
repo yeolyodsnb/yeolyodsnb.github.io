@@ -175,9 +175,29 @@
     <div class="img-search-modal">
       <div class="img-search-header">
         <h2>🔍 搜索免费图片</h2>
-        <button id="closeImgSearchBtn" class="btn-close-search">&times;</button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button id="toggleApiBtn" class="btn-api-config" onclick="toggleApiSection()" title="API 设置">⚙️</button>
+          <button id="closeImgSearchBtn" class="btn-close-search">&times;</button>
+        </div>
       </div>
       <p class="img-search-hint">图片来自 Unsplash，可免费用于个人和商业项目</p>
+
+      <!-- API Key 配置区 -->
+      <div id="apiKeySection" class="api-key-section" style="display:none">
+        <div class="api-key-row">
+          <label for="unsplashApiKeyInput">🔑 Unsplash API Key</label>
+          <div class="api-key-input-row">
+            <input id="unsplashApiKeyInput" type="text" placeholder="粘贴你的 Unsplash Access Key...">
+            <button onclick="saveAndCloseApi()" class="btn-save-api">保存</button>
+          </div>
+          <p id="apiKeyStatus" class="api-key-status">未配置（仍可使用 Source 模式搜索）</p>
+          <p class="api-key-help">
+            💡 免费获取 Key：访问 <a href="https://unsplash.com/developers" target="_blank" rel="noopener">unsplash.com/developers</a>
+            → 注册应用 → 复制 Access Key → 粘贴到这里。<br>
+            🆓 免费额度：50次/小时，个人使用完全够用。
+          </p>
+        </div>
+      </div>
 
       <!-- 搜索栏 -->
       <div class="img-search-bar">
