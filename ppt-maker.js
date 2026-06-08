@@ -30,15 +30,14 @@ const FONT_SIZES = {
 };
 
 // ========== AI 生成配置 ==========
-// 后端地址：本地开发用 localhost，部署后改为实际地址
+// 后端地址：GitHub Pages 访问时自动连 Vercel 云端，本地开发连 localhost
 const API_BASE = (() => {
-  // 如果页面是通过 GitHub Pages 访问的，后端在本地运行
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     return `http://localhost:${new URLSearchParams(window.location.search).get('port') || '3001'}`;
   }
-  // 生产环境：默认连本地（可在此改为你的云服务器地址）
+  // 生产环境：Vercel 云端后端
   const savedBackend = localStorage.getItem('ai_backend_url');
-  return savedBackend || 'http://localhost:3001';
+  return savedBackend || 'https://ppt-maker-api.vercel.app';
 })();
 
 // ========== 数据模型 ==========
