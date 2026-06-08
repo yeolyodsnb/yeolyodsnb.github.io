@@ -491,11 +491,18 @@ function renderPreviewImage() {
 }
 
 // ========== 设置主题 ==========
-function setTheme(name) {
+function setTheme(name, applyToAll) {
   currentTheme = name;
   document.querySelectorAll('.theme-dot').forEach(d => {
     d.classList.toggle('active', d.dataset.theme === name);
   });
+  // 清除当前页的 AI bgColor，让主题色生效
+  if (applyToAll) {
+    slides.forEach(s => { s.bgColor = ''; });
+    toast('🎨 已将主题应用到全部幻灯片');
+  } else {
+    slides[currentIndex].bgColor = '';
+  }
   updatePreview();
 }
 
@@ -1229,9 +1236,24 @@ $('layoutPicker').addEventListener('click', (e) => {
   if (btn) setLayout(btn.dataset.layout);
 });
 
+// 主题切换：单击=当前页，双击=全部幻灯片
+let themeClickTimer = null;
 $('themePicker').addEventListener('click', (e) => {
   const dot = e.target.closest('.theme-dot');
-  if (dot) setTheme(dot.dataset.theme);
+  if (!dot) return;
+  const themeName = dot.dataset.theme;
+  if (themeClickTimer) {
+    // 双击：应用到全部
+    clearTimeout(themeClickTimer);
+    themeClickTimer = null;
+    setTheme(themeName, true);
+    return;
+  }
+  // 单击：仅当前页（延迟判断）
+  themeClickTimer = setTimeout(() => {
+    themeClickTimer = null;
+    setTheme(themeName, false);
+  }, 300);
 });
 
 // ========== 快捷键 ==========
