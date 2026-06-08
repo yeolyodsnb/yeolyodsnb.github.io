@@ -729,7 +729,11 @@ const apiKeySection      = $('apiKeySection');
 
 // 从 localStorage 读取用户自己的 API Key
 function getApiKey() {
-  return (localStorage.getItem('unsplash_api_key') || '').trim();
+  let key = localStorage.getItem('unsplash_api_key') || '';
+  key = key.trim();
+  // 去掉可能误包裹的首尾引号（用户复制时容易带进来）
+  key = key.replace(/^["']+|["']+$/g, '');
+  return key;
 }
 
 function saveApiKey(key) {
@@ -776,9 +780,17 @@ function closeImageSearch() {
 
 // ========== 模式一：Unsplash API 搜索（需 Key） ==========
 async function searchImagesViaAPI(query, apiKey) {
-  const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=12&client_id=${apiKey}&lang=zh`;
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error('API error: ' + resp.status);
+  // 使用 Authorization Header 传递 Client-ID，Key 不会暴露在 URL 中
+  const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=12`;
+  const resp = await fetch(url, {
+    headers: {
+      'Authorization': 'Client-ID ' + apiKey
+    }
+  });
+  if (!resp.ok) {
+    const errText = await resp.text().catch(() => '');
+    throw new Error(`API error ${resp.status}: ${errText}`);
+  }
   const data = await resp.json();
 
   if (!data.results || data.results.length === 0) return false;
