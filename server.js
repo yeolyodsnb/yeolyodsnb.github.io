@@ -5,12 +5,13 @@ const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const path = require('path');
 
 // ---- 中间件 ----
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
-// ---- 常量 ----
+// ---- API 路由（放在 static 之前，确保优先匹配）----
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/chat/completions';
 const MODEL = 'deepseek-chat';
@@ -154,6 +155,14 @@ app.post('/api/generate-ppt', async (req, res) => {
       error: '调用 AI API 失败: ' + (err.response?.data?.error?.message || err.message),
     });
   }
+});
+
+// ---- 静态文件服务（API 路由之后，避免被覆盖）----
+app.use(express.static(path.join(__dirname, '.')));
+
+// 兜底：访问根路径时返回 index.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // ---- 启动 ----
