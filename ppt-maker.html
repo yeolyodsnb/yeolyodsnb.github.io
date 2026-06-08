@@ -33,6 +33,8 @@
       </div>
       <ul id="slideList" class="slide-list"></ul>
       <div class="slide-actions">
+        <button id="undoBtn" class="btn-icon" title="撤销 (Ctrl+Z)">↩</button>
+        <button id="redoBtn" class="btn-icon" title="重做 (Ctrl+Y)">↪</button>
         <button id="moveUpBtn" class="btn-icon" title="上移">⬆</button>
         <button id="moveDownBtn" class="btn-icon" title="下移">⬇</button>
         <button id="duplicateSlideBtn" class="btn-icon" title="复制">📋</button>
@@ -44,6 +46,13 @@
           <input id="exportFileName" type="text" value="我的演示文稿" placeholder="输入文件名...">
         </div>
         <button id="exportBtn" class="btn-export">📥 导出 PPTX</button>
+        <div class="draft-actions">
+          <button id="saveDraftBtn" class="btn-draft">💾 保存草稿</button>
+          <button id="loadDraftBtn" class="btn-draft">📂 加载草稿</button>
+          <button id="exportJsonBtn" class="btn-draft">⬆ 导出 JSON</button>
+          <label for="importJsonInput" class="btn-draft btn-draft-label">⬇ 导入 JSON</label>
+          <input id="importJsonInput" type="file" accept=".json" style="display:none">
+        </div>
       </div>
     </aside>
 
@@ -54,7 +63,6 @@
       <div class="ai-generate-panel" id="aiPanel">
         <div class="ai-panel-header">
           <span class="ai-panel-title">🤖 AI 一键生成 PPT</span>
-          <span class="ai-panel-badge">DeepSeek</span>
         </div>
         <div class="ai-panel-body">
           <div class="ai-input-row">

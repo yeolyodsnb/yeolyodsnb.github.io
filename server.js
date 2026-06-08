@@ -151,7 +151,7 @@ app.post('/api/generate-ppt', async (req, res) => {
       console.error('   响应:', JSON.stringify(err.response.data).substring(0, 300));
     }
     res.status(500).json({
-      error: '调用 DeepSeek API 失败: ' + (err.response?.data?.error?.message || err.message),
+      error: '调用 AI API 失败: ' + (err.response?.data?.error?.message || err.message),
     });
   }
 });

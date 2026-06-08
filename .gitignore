@@ -1,13 +1,26 @@
-# 环境变量 — 包含 API Key，绝对不能提交
+# 依赖
+node_modules/
+
+# 环境变量（含敏感信息，勿提交）
 .env
 
-# Node.js
-node_modules/
-npm-debug.log*
+# IDE / 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# 系统文件
+# 操作系统
 .DS_Store
 Thumbs.db
-desktop.ini
 
-.vercel
+# 日志
+*.log
+npm-debug.log*
+
+# WorkBuddy
+.workbuddy/
+
+# Vercel
+.vercel/

@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>我的个人主页</title>
+  <title>yeol — 个人主页</title>
+  <meta name="description" content="yeol 的个人主页，记录项目与想法">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,24 +13,32 @@
   <nav>
     <div class="nav-inner">
       <a href="#home" class="logo">🌟 yeol</a>
-      <ul class="nav-links">
+      <ul class="nav-links" id="navLinks">
         <li><a href="#home">首页</a></li>
         <li><a href="#about">关于我</a></li>
         <li><a href="#projects">项目</a></li>
         <li><a href="ppt-maker.html">制作PPT</a></li>
         <li><a href="#contact">联系</a></li>
       </ul>
+      <button class="nav-hamburger" id="navHamburger" aria-label="菜单">
+        <span></span><span></span><span></span>
+      </button>
     </div>
   </nav>
 
   <!-- 首页大图 -->
   <section id="home" class="hero">
     <div class="hero-content">
-      <h1>你好，我是 <span class="highlight">yeol</span></h1>
-      <p class="subtitle">🧑‍💻 创造者 / 🚀 探索者</p>
-      <p class="desc">欢迎来到我的个人空间，这里记录了我的项目和想法。</p>
-      <a href="#about" class="btn">了解更多</a>
+      <p class="hero-greeting">你好，世界 👋</p>
+      <h1>我是 <span class="highlight">yeol</span></h1>
+      <p class="subtitle">🧑‍💻 创造者 &nbsp;/&nbsp; 🚀 探索者 &nbsp;/&nbsp; 🎨 折腾者</p>
+      <p class="desc">欢迎来到我的个人空间，这里记录了我的项目、工具和想法。</p>
+      <div class="hero-btns">
+        <a href="#projects" class="btn">查看项目</a>
+        <a href="#contact" class="btn btn-outline">联系我</a>
+      </div>
     </div>
+    <div class="hero-scroll-hint">↓</div>
   </section>
 
   <!-- 关于我 -->
@@ -37,15 +46,19 @@
     <h2>关于我</h2>
     <div class="about-content">
       <div class="about-text">
-        <p>你好！我是 yeol，一个对技术和创造充满热情的人。</p>
-        <p>喜欢探索新事物，用工具和方法让生活更有趣。</p>
-        <p>业余时间喜欢折腾各种好玩的项目，不断学习新技能。</p>
+        <p>你好！我是 <strong>yeol</strong>，一个对技术和创造充满热情的人。</p>
+        <p>喜欢从零开始搭东西——一个工具、一个页面、一个自动化脚本，把想法变成现实的过程本身就很有趣。</p>
+        <p>目前在持续学习 Web 开发，研究 AI 工具的实际应用，偶尔写写笔记记录踩过的坑。</p>
       </div>
       <div class="skills">
         <span class="skill-tag">HTML / CSS</span>
+        <span class="skill-tag">JavaScript</span>
+        <span class="skill-tag">Node.js</span>
         <span class="skill-tag">Git & GitHub</span>
         <span class="skill-tag">Markdown</span>
-        <span class="skill-tag">持续学习中...</span>
+        <span class="skill-tag">AI 工具</span>
+        <span class="skill-tag">Vercel 部署</span>
+        <span class="skill-tag">持续学习中 🔥</span>
       </div>
     </div>
   </section>
@@ -58,19 +71,28 @@
         <div class="card-icon">🌐</div>
         <h3>个人主页</h3>
         <p>你现在看到的这个网站，从零搭建并部署上线，会持续完善。</p>
-        <a href="https://yeolyodsnb.github.io" class="card-link">访问网站 →</a>
+        <div class="card-tags">
+          <span>HTML</span><span>CSS</span><span>GitHub Pages</span>
+        </div>
+        <a href="https://yeolyodsnb.github.io" class="card-link" target="_blank" rel="noopener">访问网站 →</a>
       </div>
       <div class="project-card">
         <div class="card-icon">📊</div>
-        <h3>PPT 制作工具</h3>
-        <p>在线制作演示文稿，支持多种配色模板，一键导出 PPTX 文件。</p>
+        <h3>AI PPT 制作工具</h3>
+        <p>在线制作演示文稿，AI 一键生成内容，支持多种配色和布局，导出 PPTX。</p>
+        <div class="card-tags">
+          <span>JavaScript</span><span>AI API</span><span>PptxGenJS</span>
+        </div>
         <a href="ppt-maker.html" class="card-link">立即使用 →</a>
       </div>
       <div class="project-card">
         <div class="card-icon">📝</div>
-        <h3>想法 & 笔记</h3>
-        <p>记录学习过程中的心得、教程和灵感。</p>
-        <a href="#" class="card-link">敬请期待 →</a>
+        <h3>学习笔记</h3>
+        <p>记录 Web 开发、AI 工具使用心得和踩坑经验，边学边写。</p>
+        <div class="card-tags">
+          <span>Markdown</span><span>持续更新</span>
+        </div>
+        <a href="https://github.com/yeolyodsnb" class="card-link" target="_blank" rel="noopener">GitHub 查看 →</a>
       </div>
     </div>
   </section>
@@ -80,13 +102,16 @@
     <h2>联系我</h2>
     <p class="contact-desc">有合作想法或者想聊聊天？欢迎联系！</p>
     <div class="contact-links">
-      <a href="https://github.com/yeolyodsnb" target="_blank" class="contact-item">💻 GitHub</a>
+      <a href="https://github.com/yeolyodsnb" target="_blank" rel="noopener" class="contact-item">
+        <span class="contact-icon">💻</span>
+        <span>GitHub</span>
+      </a>
     </div>
   </section>
 
   <!-- 页脚 -->
   <footer>
-    <p>&copy; 2026 yeol. Powered by GitHub Pages.</p>
+    <p>&copy; 2026 yeol &nbsp;·&nbsp; Powered by GitHub Pages &nbsp;·&nbsp; Made with ❤️</p>
   </footer>
 
   <script src="script.js"></script>

@@ -33,14 +33,158 @@ const FONT_SIZES = {
 // 后端地址：GitHub Pages 访问时自动连 Vercel 云端，本地开发连 localhost
 const API_BASE = (() => {
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    // 本地开发：连本地后端，支持自定义端口
     return `http://localhost:${new URLSearchParams(window.location.search).get('port') || '3001'}`;
   }
-  // 生产环境：Vercel 云端后端
+  // 生产环境：使用当前域名（Vercel 静态文件和 API 在同一域名下）
+  // 用户也可通过 localStorage 覆盖为自定义后端地址
   const savedBackend = localStorage.getItem('ai_backend_url');
-  return savedBackend || 'https://ppt-maker-api.vercel.app';
+  return savedBackend || (window.location.origin);
 })();
 
-// ========== 数据模型 ==========
+// ========== 撤销/重做历史 ==========
+const HISTORY_LIMIT = 50;
+let history = [];
+let historyIndex = -1;
+let _suppressHistory = false;
+
+function pushHistory() {
+  if (_suppressHistory) return;
+  // 删除 historyIndex 之后的历史
+  history = history.slice(0, historyIndex + 1);
+  history.push({ slides: JSON.parse(JSON.stringify(slides)), index: currentIndex });
+  if (history.length > HISTORY_LIMIT) history.shift();
+  historyIndex = history.length - 1;
+  updateUndoRedoBtns();
+}
+
+function updateUndoRedoBtns() {
+  const undoBtn = $('undoBtn');
+  const redoBtn = $('redoBtn');
+  if (undoBtn) undoBtn.disabled = historyIndex <= 0;
+  if (redoBtn) redoBtn.disabled = historyIndex >= history.length - 1;
+}
+
+function undoAction() {
+  if (historyIndex <= 0) return;
+  historyIndex--;
+  _suppressHistory = true;
+  const snap = history[historyIndex];
+  slides = JSON.parse(JSON.stringify(snap.slides));
+  currentIndex = Math.min(snap.index, slides.length - 1);
+  renderSlideList();
+  selectSlide(currentIndex);
+  _suppressHistory = false;
+  updateUndoRedoBtns();
+  toast('↩ 已撤销');
+}
+
+function redoAction() {
+  if (historyIndex >= history.length - 1) return;
+  historyIndex++;
+  _suppressHistory = true;
+  const snap = history[historyIndex];
+  slides = JSON.parse(JSON.stringify(snap.slides));
+  currentIndex = Math.min(snap.index, slides.length - 1);
+  renderSlideList();
+  selectSlide(currentIndex);
+  _suppressHistory = false;
+  updateUndoRedoBtns();
+  toast('↪ 已重做');
+}
+
+// ========== 草稿保存 ==========
+const DRAFT_KEY = 'ppt_maker_draft';
+const DRAFT_THEME_KEY = 'ppt_maker_theme';
+
+function saveDraft() {
+  saveCurrent();
+  try {
+    const draft = { slides, currentIndex, theme: currentTheme, ts: Date.now() };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    localStorage.setItem(DRAFT_THEME_KEY, currentTheme);
+    toast('💾 草稿已保存');
+  } catch (e) {
+    toast('❌ 草稿保存失败（存储可能已满）');
+  }
+}
+
+function loadDraft() {
+  const raw = localStorage.getItem(DRAFT_KEY);
+  if (!raw) { toast('暂无草稿'); return; }
+  try {
+    const draft = JSON.parse(raw);
+    if (!Array.isArray(draft.slides) || draft.slides.length === 0) { toast('草稿数据异常'); return; }
+    const date = new Date(draft.ts);
+    const timeStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`;
+    if (!confirm(`加载草稿？\n（保存于 ${timeStr}，共 ${draft.slides.length} 页）`)) return;
+    slides = draft.slides;
+    currentIndex = Math.min(draft.currentIndex || 0, slides.length - 1);
+    if (draft.theme) setTheme(draft.theme);
+    renderSlideList();
+    selectSlide(currentIndex);
+    pushHistory();
+    toast('✅ 草稿已加载');
+  } catch (e) {
+    toast('❌ 草稿数据损坏');
+  }
+}
+
+// 自动草稿恢复提示（页面加载时）
+function checkAutoRestoreDraft() {
+  const raw = localStorage.getItem(DRAFT_KEY);
+  if (!raw) return;
+  try {
+    const draft = JSON.parse(raw);
+    if (!Array.isArray(draft.slides) || draft.slides.length === 0) return;
+    const date = new Date(draft.ts);
+    const timeStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`;
+    // 用自定义 toast-like 提示
+    const tip = document.createElement('div');
+    tip.style.cssText = 'position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#2d3436;color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;z-index:999;display:flex;gap:12px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.2)';
+    tip.innerHTML = `📄 发现草稿（${timeStr}，${draft.slides.length}页）<button id="_restoreBtn" style="padding:4px 12px;background:#6c5ce7;border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:12px">恢复</button><button id="_dismissBtn" style="padding:4px 10px;background:transparent;border:1px solid #666;color:#ccc;border-radius:6px;cursor:pointer;font-size:12px">忽略</button>`;
+    document.body.appendChild(tip);
+    tip.querySelector('#_restoreBtn').addEventListener('click', () => { loadDraft(); tip.remove(); });
+    tip.querySelector('#_dismissBtn').addEventListener('click', () => tip.remove());
+    setTimeout(() => tip.remove(), 8000);
+  } catch (e) {}
+}
+
+// ========== JSON 导入/导出 ==========
+function exportJson() {
+  saveCurrent();
+  const data = { version: 1, theme: currentTheme, slides };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (exportFileName.value.trim() || '演示文稿') + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✅ JSON 已导出');
+}
+
+function importJson(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data.slides)) throw new Error('slides 字段缺失');
+      if (!confirm(`导入 JSON？当前内容将被替换（共 ${data.slides.length} 页）`)) return;
+      slides = data.slides;
+      currentIndex = 0;
+      if (data.theme) setTheme(data.theme);
+      renderSlideList();
+      selectSlide(0);
+      pushHistory();
+      toast('✅ JSON 已导入');
+    } catch (err) {
+      toast('❌ 导入失败：' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
 let slides = [
   { title: '欢迎使用 PPT 制作工具', subtitle: '', content: '点击左侧「+ 添加」创建新幻灯片\n选择版面布局和配色模板\n编辑完成后一键导出 PPTX 文件', content2: '', image: '', note: '', layout: 'content', fontSize: 'normal', textAlign: 'left', titlePos: 'top' },
   { title: '五大版面布局', subtitle: '', content: '内容页：标题 + 要点列表，适合正文', content2: '标题页：居中大标题，适合封面/章节页\n图文混排：图片与文字并排展示\n双栏：左右对比内容\n图片页：全屏图片展示', image: '', note: '', layout: 'two-column', fontSize: 'normal', textAlign: 'left', titlePos: 'top' },
@@ -197,6 +341,7 @@ function setLayout(layout) {
   toggleFieldsByLayout(layout);
   updatePreview();
   renderSlideList();
+  pushHistory();
 }
 
 // ========== 更新预览 ==========
@@ -335,6 +480,7 @@ function addSlide() {
   };
   slides.push(newSlide);
   selectSlide(slides.length - 1);
+  pushHistory();
 }
 
 function deleteSlide() {
@@ -343,6 +489,7 @@ function deleteSlide() {
   slides.splice(currentIndex, 1);
   if (currentIndex >= slides.length) currentIndex = slides.length - 1;
   selectSlide(currentIndex);
+  pushHistory();
 }
 
 function moveSlide(up) {
@@ -354,6 +501,7 @@ function moveSlide(up) {
   [slides[i], slides[target]] = [slides[target], slides[i]];
   currentIndex = target;
   selectSlide(currentIndex);
+  pushHistory();
   toast(up ? '已上移' : '已下移');
 }
 
@@ -363,6 +511,7 @@ function duplicateSlide() {
   clone.title = (clone.title || '复制') + ' (副本)';
   slides.splice(currentIndex + 1, 0, clone);
   selectSlide(currentIndex + 1);
+  pushHistory();
   toast('幻灯片已复制');
 }
 
@@ -654,20 +803,30 @@ async function searchImagesViaAPI(query, apiKey) {
   return true;
 }
 
-// ========== 模式二：Source 模式搜索（无需 Key，使用 source.unsplash.com） ==========
+// ========== 模式二：Picsum Photos 备用方案（无需 Key，稳定可用） ==========
+// 使用 picsum.photos 提供的随机高质量图片，种子基于查询关键词哈希
+function hashStr(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
 function searchImagesViaSource(query) {
-  // 用不同 seed 生成 12 张不同图片
-  const seeds = [1,2,3,4,5,6,7,8,9,10,11,12];
-  seeds.forEach(n => {
-    const thumbUrl = `https://source.unsplash.com/300x225/?${encodeURIComponent(query)}&seed=${n}&v=${Date.now()}`;
-    const fullUrl  = `https://source.unsplash.com/1200x900/?${encodeURIComponent(query)}&seed=${n}`;
+  const base = hashStr(query + Date.now());
+  // 生成 12 张基于不同种子的随机图片
+  for (let n = 0; n < 12; n++) {
+    const seed = (base + n * 137) % 1000;
+    const thumbUrl = `https://picsum.photos/seed/${seed}/300/225`;
+    const fullUrl  = `https://picsum.photos/seed/${seed}/1280/720`;
 
     const card = document.createElement('div');
     card.className = 'img-result-card';
     card.title = '点击插入此图片';
     card.innerHTML = `
       <img src="${thumbUrl}" alt="${query}" loading="lazy" onerror="this.parentElement.style.display='none'">
-      <span class="img-author">🖼️ source.unsplash.com</span>
+      <span class="img-author">🖼️ Picsum Photos（随机精选）</span>
     `;
     card.addEventListener('click', () => {
       slideImage.value = fullUrl;
@@ -677,7 +836,12 @@ function searchImagesViaSource(query) {
       toast('✅ 图片已插入！');
     });
     imgSearchResults.appendChild(card);
-  });
+  }
+  // 提示用户备用模式的特性
+  const hint = document.createElement('p');
+  hint.style.cssText = 'grid-column:1/-1;font-size:11px;color:#bbb;text-align:center;padding:8px 0 0';
+  hint.textContent = '💡 当前为随机模式，配置 Unsplash API Key 可按关键词精确搜图';
+  imgSearchResults.appendChild(hint);
 }
 
 // ========== 统一搜索入口 ==========
@@ -824,6 +988,7 @@ function renderAISlides(data) {
   currentIndex = 0;
   renderSlideList();
   selectSlide(0);
+  pushHistory();
 
   // 如果是标题页，自动切换配色为更鲜艳的主题
   console.log(`✅ 已渲染 ${slides.length} 页幻灯片:`);
@@ -870,16 +1035,36 @@ moveDownBtn.addEventListener('click', () => moveSlide(false));
 dupSlideBtn.addEventListener('click', duplicateSlide);
 exportBtn.addEventListener('click', exportPPTX);
 
-slideTitle.addEventListener('input', () => { slides[currentIndex].title = slideTitle.value; updatePreview(); renderSlideList(); });
-slideSubtitle.addEventListener('input', () => { slides[currentIndex].subtitle = slideSubtitle.value; updatePreview(); });
-slideContent.addEventListener('input', () => { slides[currentIndex].content = slideContent.value; updatePreview(); });
-slideContent2.addEventListener('input', () => { slides[currentIndex].content2 = slideContent2.value; updatePreview(); });
+// 撤销/重做
+$('undoBtn').addEventListener('click', undoAction);
+$('redoBtn').addEventListener('click', redoAction);
+
+// 草稿操作
+$('saveDraftBtn').addEventListener('click', saveDraft);
+$('loadDraftBtn').addEventListener('click', loadDraft);
+$('exportJsonBtn').addEventListener('click', exportJson);
+$('importJsonInput').addEventListener('change', (e) => {
+  importJson(e.target.files[0]);
+  e.target.value = '';
+});
+
+// 带防抖的历史推送
+let _historyDebounceTimer = null;
+function pushHistoryDebounced() {
+  clearTimeout(_historyDebounceTimer);
+  _historyDebounceTimer = setTimeout(pushHistory, 800);
+}
+
+slideTitle.addEventListener('input', () => { slides[currentIndex].title = slideTitle.value; updatePreview(); renderSlideList(); pushHistoryDebounced(); });
+slideSubtitle.addEventListener('input', () => { slides[currentIndex].subtitle = slideSubtitle.value; updatePreview(); pushHistoryDebounced(); });
+slideContent.addEventListener('input', () => { slides[currentIndex].content = slideContent.value; updatePreview(); pushHistoryDebounced(); });
+slideContent2.addEventListener('input', () => { slides[currentIndex].content2 = slideContent2.value; updatePreview(); pushHistoryDebounced(); });
 slideImage.addEventListener('input', () => { slides[currentIndex].image = slideImage.value; updatePreview(); });
 slideNote.addEventListener('input', () => { slides[currentIndex].note = slideNote.value; });
 
-fontSizeSel.addEventListener('change', () => { slides[currentIndex].fontSize = fontSizeSel.value; updatePreview(); });
-textAlignSel.addEventListener('change', () => { slides[currentIndex].textAlign = textAlignSel.value; updatePreview(); });
-titlePosSel.addEventListener('change', () => { slides[currentIndex].titlePos = titlePosSel.value; updatePreview(); });
+fontSizeSel.addEventListener('change', () => { slides[currentIndex].fontSize = fontSizeSel.value; updatePreview(); pushHistory(); });
+textAlignSel.addEventListener('change', () => { slides[currentIndex].textAlign = textAlignSel.value; updatePreview(); pushHistory(); });
+titlePosSel.addEventListener('change', () => { slides[currentIndex].titlePos = titlePosSel.value; updatePreview(); pushHistory(); });
 
 $('layoutPicker').addEventListener('click', (e) => {
   const btn = e.target.closest('.layout-btn');
@@ -898,6 +1083,8 @@ document.addEventListener('keydown', (e) => {
     closeImageSearch();
     return;
   }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undoAction(); }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redoAction(); }
   if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); exportPPTX(); }
   if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); addSlide(); }
   if ((e.ctrlKey || e.metaKey) && e.key === 'd') { e.preventDefault(); duplicateSlide(); }
@@ -909,12 +1096,17 @@ document.addEventListener('keydown', (e) => {
 renderSlideList();
 selectSlide(0);
 setTheme('purple');
+pushHistory();        // 记录初始状态
+updateUndoRedoBtns();
 
 // 检测 AI 后端
 checkBackendHealth();
 
+// 草稿恢复提示
+setTimeout(checkAutoRestoreDraft, 1000);
+
 console.log('📊 PPT Maker Pro 已就绪');
 console.log('   AI 后端:', API_BASE);
-console.log('   快捷键: Ctrl+S 导出 | Ctrl+N 新建 | Ctrl+D 复制 | Ctrl+↑↓ 排序');
-console.log('   图片搜索: 点击「🔍 搜图」搜索 Unsplash 免费图片');
+console.log('   快捷键: Ctrl+Z 撤销 | Ctrl+Y 重做 | Ctrl+S 导出 | Ctrl+N 新建 | Ctrl+D 复制 | Ctrl+↑↓ 排序');
+console.log('   图片搜索: 点击「🔍 搜图」搜索高质量免费图片');
 console.log('   AI 生成: 输入主题 → 点击 ✨生成 → 自动填充幻灯片');

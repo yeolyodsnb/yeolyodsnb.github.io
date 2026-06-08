@@ -62,16 +62,55 @@ nav {
   font-weight: bold;
 }
 
+/* 汉堡菜单按钮（移动端显示） */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.nav-hamburger span {
+  display: block;
+  width: 24px;
+  height: 2px;
+  background: #333;
+  border-radius: 2px;
+  transition: all 0.3s;
+}
+
+.nav-hamburger.open span:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 5px);
+}
+.nav-hamburger.open span:nth-child(2) {
+  opacity: 0;
+}
+.nav-hamburger.open span:nth-child(3) {
+  transform: rotate(-45deg) translate(5px, -5px);
+}
+
 /* ========== 首页大图 ========== */
 .hero {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-direction: column;
   text-align: center;
   background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 40%, #4834d4 100%);
   color: #fff;
   padding: 40px 24px;
+  position: relative;
+}
+
+.hero-greeting {
+  font-size: 16px;
+  opacity: 0.8;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
 }
 
 .hero-content {
@@ -79,8 +118,40 @@ nav {
 }
 
 .hero h1 {
-  font-size: 44px;
+  font-size: 52px;
   margin-bottom: 16px;
+  line-height: 1.2;
+}
+
+.hero-btns {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-outline {
+  background: transparent;
+  color: #fff;
+  border: 2px solid rgba(255,255,255,0.7);
+}
+
+.btn-outline:hover {
+  background: rgba(255,255,255,0.15);
+  border-color: #fff;
+}
+
+.hero-scroll-hint {
+  position: absolute;
+  bottom: 32px;
+  font-size: 20px;
+  opacity: 0.5;
+  animation: bounce 1.8s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
 }
 
 .highlight {
@@ -215,7 +286,25 @@ section h2::after {
 .project-card p {
   color: #666;
   font-size: 14px;
+  margin-bottom: 12px;
+}
+
+/* 项目技术标签 */
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
   margin-bottom: 16px;
+}
+
+.card-tags span {
+  font-size: 11px;
+  padding: 3px 10px;
+  background: #f0edff;
+  color: #6c5ce7;
+  border-radius: 10px;
+  font-weight: bold;
 }
 
 .card-link {
@@ -249,7 +338,9 @@ section h2::after {
 }
 
 .contact-item {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 14px 32px;
   background: #6c5ce7;
   color: #fff;
@@ -257,6 +348,10 @@ section h2::after {
   border-radius: 30px;
   font-size: 16px;
   transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.contact-icon {
+  font-size: 18px;
 }
 
 .contact-item:hover {
@@ -276,21 +371,47 @@ footer {
 /* ========== 响应式 ========== */
 @media (max-width: 640px) {
   .hero h1 {
-    font-size: 28px;
+    font-size: 36px;
   }
   .subtitle {
-    font-size: 16px;
+    font-size: 15px;
   }
   .nav-links {
-    gap: 14px;
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    flex-direction: column;
+    gap: 0;
+    padding: 8px 0 16px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
   }
-  .nav-links a {
-    font-size: 13px;
+  .nav-links.open {
+    display: flex;
+  }
+  .nav-links li a {
+    display: block;
+    padding: 12px 24px;
+    font-size: 15px;
+    border-radius: 0;
+  }
+  .nav-hamburger {
+    display: flex;
+  }
+  .nav-inner {
+    position: relative;
   }
   section {
     padding: 50px 16px;
   }
   section h2 {
     font-size: 26px;
+  }
+  .hero-btns {
+    flex-direction: column;
+    align-items: center;
   }
 }

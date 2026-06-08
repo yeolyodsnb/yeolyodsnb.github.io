@@ -139,6 +139,49 @@
   padding-top: 14px;
 }
 
+/* 草稿操作区 */
+.draft-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.btn-draft {
+  padding: 8px 6px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  text-align: center;
+  transition: all 0.15s;
+  color: #555;
+}
+
+.btn-draft:hover {
+  background: #f0edff;
+  border-color: #6c5ce7;
+  color: #6c5ce7;
+}
+
+.btn-draft-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 撤销/重做按钮禁用状态 */
+.btn-icon:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.btn-icon:disabled:hover {
+  background: #fff;
+  border-color: #ddd;
+}
+
 .export-filename {
   margin-bottom: 10px;
 }
@@ -206,15 +249,6 @@
   font-size: 17px;
   font-weight: bold;
   color: #4a3f9a;
-}
-
-.ai-panel-badge {
-  font-size: 11px;
-  padding: 3px 10px;
-  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
-  color: #fff;
-  border-radius: 12px;
-  font-weight: bold;
 }
 
 .ai-panel-body {
