@@ -553,6 +553,95 @@ function exportImage(s, url, x, y, w, h) {
     .catch(() => {});
 }
 
+// ========== 图片搜索 ==========
+const UNSPLASH_ACCESS_KEY = 'b2e4f6c8a0d1e3f5b7c9d2e4f6a8b0c1d3e5f7a9b1c3d5e7f9a1b3c5d7e9f1';
+
+const imgSearchOverlay   = $('imageSearchOverlay');
+const imgSearchInput     = $('imgSearchInput');
+const imgSearchBtn       = $('imgSearchBtn');
+const imgSearchResults   = $('imgSearchResults');
+const imgSearchLoading   = $('imgSearchLoading');
+const openImgSearchBtn   = $('openImageSearchBtn');
+const closeImgSearchBtn  = $('closeImgSearchBtn');
+
+function openImageSearch() {
+  imgSearchOverlay.style.display = '';
+  imgSearchInput.focus();
+}
+
+function closeImageSearch() {
+  imgSearchOverlay.style.display = 'none';
+}
+
+async function searchImages(query) {
+  imgSearchResults.innerHTML = '';
+  imgSearchLoading.style.display = '';
+  try {
+    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=12&client_id=${UNSPLASH_ACCESS_KEY}&lang=zh`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('API error');
+    const data = await resp.json();
+    imgSearchLoading.style.display = 'none';
+
+    if (!data.results || data.results.length === 0) {
+      imgSearchResults.innerHTML = '<p class="img-search-empty">😕 没有找到相关图片，换个关键词试试</p>';
+      return;
+    }
+
+    data.results.forEach(photo => {
+      const card = document.createElement('div');
+      card.className = 'img-result-card';
+      card.title = `作者: ${photo.user.name} — 点击插入`;
+      card.innerHTML = `
+        <img src="${photo.urls.small}" alt="${photo.alt_description || query}" loading="lazy">
+        <span class="img-author">📷 ${photo.user.name}</span>
+      `;
+      card.addEventListener('click', () => {
+        slideImage.value = photo.urls.regular;
+        slides[currentIndex].image = photo.urls.regular;
+        updatePreview();
+        closeImageSearch();
+        toast('✅ 图片已插入！');
+      });
+      imgSearchResults.appendChild(card);
+    });
+  } catch (err) {
+    imgSearchLoading.style.display = 'none';
+    imgSearchResults.innerHTML = '<p class="img-search-empty">⚠️ 搜索失败，请检查网络后重试</p>';
+    console.error('图片搜索失败:', err);
+  }
+}
+
+// 触发搜索
+function triggerImageSearch() {
+  const q = imgSearchInput.value.trim();
+  if (q) searchImages(q);
+}
+
+// ========== 事件监听（图片搜索） ==========
+openImgSearchBtn.addEventListener('click', openImageSearch);
+closeImgSearchBtn.addEventListener('click', closeImageSearch);
+imgSearchOverlay.addEventListener('click', (e) => {
+  if (e.target === imgSearchOverlay) closeImageSearch();
+});
+imgSearchBtn.addEventListener('click', triggerImageSearch);
+imgSearchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') triggerImageSearch();
+});
+
+// 快捷分类点击
+$('imgSearchCats').addEventListener('click', (e) => {
+  const btn = e.target.closest('.cat-btn');
+  if (btn) {
+    const kw = btn.dataset.kw;
+    imgSearchInput.value = kw;
+    searchImages(kw);
+  }
+});
+
+// ESC 关闭弹窗（合并到主快捷键监听）
+// 注意: 已通过全局 keydown 处理 (见下方)
+
 // ========== 事件监听 ==========
 addSlideBtn.addEventListener('click', addSlide);
 deleteSlideBtn.addEventListener('click', deleteSlide);
@@ -584,6 +673,11 @@ $('themePicker').addEventListener('click', (e) => {
 
 // ========== 快捷键 ==========
 document.addEventListener('keydown', (e) => {
+  // 图片搜索弹窗快捷键
+  if (e.key === 'Escape' && imgSearchOverlay.style.display !== 'none') {
+    closeImageSearch();
+    return;
+  }
   if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); exportPPTX(); }
   if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); addSlide(); }
   if ((e.ctrlKey || e.metaKey) && e.key === 'd') { e.preventDefault(); duplicateSlide(); }
@@ -598,3 +692,4 @@ setTheme('purple');
 
 console.log('📊 PPT Maker Pro 已就绪');
 console.log('   快捷键: Ctrl+S 导出 | Ctrl+N 新建 | Ctrl+D 复制 | Ctrl+↑↓ 排序');
+console.log('   图片搜索: 点击「🔍 搜图」搜索 Unsplash 免费图片');

@@ -142,7 +142,10 @@
       <!-- 图片链接 -->
       <div class="editor-group" id="imageGroup">
         <label for="slideImage">🖼️ 图片链接（可选）</label>
-        <input id="slideImage" type="text" placeholder="粘贴图片URL...">
+        <div class="image-input-row">
+          <input id="slideImage" type="text" placeholder="粘贴图片URL，或点击右侧按钮搜索...">
+          <button id="openImageSearchBtn" class="btn-search-img" title="搜索免费图片">🔍 搜图</button>
+        </div>
       </div>
 
       <!-- 备注 -->
@@ -166,6 +169,46 @@
       </div>
     </section>
   </main>
+
+  <!-- ====== 图片搜索弹窗 ====== -->
+  <div id="imageSearchOverlay" class="img-search-overlay" style="display:none">
+    <div class="img-search-modal">
+      <div class="img-search-header">
+        <h2>🔍 搜索免费图片</h2>
+        <button id="closeImgSearchBtn" class="btn-close-search">&times;</button>
+      </div>
+      <p class="img-search-hint">图片来自 Unsplash，可免费用于个人和商业项目</p>
+
+      <!-- 搜索栏 -->
+      <div class="img-search-bar">
+        <input id="imgSearchInput" type="text" placeholder="输入关键词，如：自然、科技、商务、抽象..." maxlength="60">
+        <button id="imgSearchBtn" class="btn-search-go">搜索</button>
+      </div>
+
+      <!-- 快捷分类 -->
+      <div class="img-search-cats" id="imgSearchCats">
+        <span class="cat-label">快速浏览：</span>
+        <button class="cat-btn" data-kw="nature">🌿 自然</button>
+        <button class="cat-btn" data-kw="technology">💻 科技</button>
+        <button class="cat-btn" data-kw="business">💼 商务</button>
+        <button class="cat-btn" data-kw="abstract">🎨 抽象</button>
+        <button class="cat-btn" data-kw="city">🏙️ 城市</button>
+        <button class="cat-btn" data-kw="minimal">🤍 极简</button>
+        <button class="cat-btn" data-kw="food">🍜 美食</button>
+        <button class="cat-btn" data-kw="space">🌌 太空</button>
+      </div>
+
+      <!-- 结果区 -->
+      <div id="imgSearchResults" class="img-search-results">
+        <p class="img-search-empty">👆 输入关键词搜索 Unsplash 高质量免费图片</p>
+      </div>
+
+      <!-- 加载指示器 -->
+      <div id="imgSearchLoading" class="img-search-loading" style="display:none">
+        <span class="spinner"></span> 搜索中...
+      </div>
+    </div>
+  </div>
 
   <footer>
     <p>&copy; 2026 yeol. Powered by GitHub Pages.</p>
