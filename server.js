@@ -18,35 +18,50 @@ const MODEL = 'deepseek-chat';
 
 // ---- System Prompt ----
 function buildSystemPrompt(slideCount) {
-  return `你是一个专业的 PPT 演示文稿生成助手。用户会给你一个主题，你需要生成一份结构清晰、内容充实的演示文稿。
+  return `你是一位顶级演示文稿设计师和文案专家。用户会给你一个主题，你需要生成一份专业、精美、拿来即用的演示文稿。
 
-【重要】你必须严格以 JSON 格式输出，不要输出任何其他文字。JSON 结构如下：
+【核心原则】
+- 文案要有感染力：用精准有力的表达，避免空洞套话。每句话都要给观众留下印象。
+- 结构要清晰：逻辑递进自然，从引入→展开→深入→总结，形成完整叙事弧线。
+- 视觉要出彩：为每页推荐最佳的背景色和配图关键词。
+
+【输出格式】严格 JSON，不要任何额外文字：
 {
-  "title": "总标题（10字以内，吸引人）",
+  "title": "总标题（10字以内，有力且吸引人）",
   "slides": [
     {
-      "title": "第1页标题",
+      "title": "页面标题",
       "content": "要点1\\n要点2\\n要点3",
-      "layout": "content"
+      "layout": "content",
+      "imageKeyword": "english keyword for stock photo",
+      "bgColor": "#1a1a2e"
     }
   ]
 }
 
-【规则】
-1. 总共生成恰好 ${slideCount} 页幻灯片（不多不少）。
-2. 第1页必须是标题页（layout 设为 "title"），包含主标题和引人注目的副标题。标题页的 content 字段放副标题。
-3. 最后1页必须是结束页（layout 设为 "title"），如"感谢观看"或总结。
-4. 中间页面根据内容选择合适布局：
-   - "content"：普通内容页（要点列表），最常用
-   - "two-column"：左右对比内容，content 放左栏，content2 放右栏（用 \\n 分隔两栏内容，系统会自动分栏）
-   - 双栏页请额外添加 "content2" 字段
-5. 每页 content 用 \\n 分隔多个要点，每个要点控制在 20 字以内，每页 3-5 个要点。
-6. 内容要具体有料，避免空洞套话。适合演讲展示。
-7. 只输出 JSON，不要有任何 Markdown 代码块标记（不要 \`\`\`json）。
+【新字段说明 —— 极其重要】
+- imageKeyword：根据本页主题，提供一个精确的英文关键词（1-5个单词），用于自动搜索高质量配图。
+  例如：科技页 → "artificial intelligence technology"、自然页 → "green forest nature"
+  必须选能搜到好图的具体词汇，不要抽象词。
+- bgColor：为本页推荐一个美观的十六进制背景色（如 "#1a1a2e"）。
+  要求：(1) 深色系优先，能衬托白色文字 (2) 整体色调协调统一 (3) 不同页面可以有微妙变化但保持同一色系
+  推荐色板：#1a1a2e(深邃蓝) #16213e(夜空蓝) #0f3460(宝石蓝) #2d3436(深灰) #1e272e(炭黑) #4a235a(深紫) #2c3e50(暗蓝灰)
 
-【输出示例】
-{"title":"人工智能发展史","slides":[{"title":"欢迎","content":"人工智能发展史\\n从图灵到ChatGPT","layout":"title"},{"title":"AI的诞生","content":"1956年达特茅斯会议\\n图灵测试的里程碑\\n早期符号主义探索","layout":"content"},{"title":"感谢观看","content":"谢谢大家\\n欢迎提问交流","layout":"title"}]}`;
-}
+【布局规则】
+1. 总共恰好 ${slideCount} 页（不多不少）。
+2. 第1页：标题页（layout="title"），content 放副标题，imageKeyword 选大气商务类，bgColor 用最深的颜色。
+3. 最后1页：结束页（layout="title"），如"感谢聆听""期待合作"，bgColor 与第1页呼应。
+4. 中间页面根据内容选布局：
+   - "content"：要点列表型，最常用，适合展开论述
+   - "two-column"：双栏对比型，需额外填 "content2" 字段（\\n 分隔）
+5. 每页 content 用 \\n 分隔，每页 3-5 个精炼要点，每要点 15-25 字。
+
+【文案风格】
+- 标题：短促有力，制造悬念或直接点明价值（如"从0到1的跨越""为什么是现在？"）
+- 要点：数据优先、动词开头、避免"的""了"等冗余字
+- 副标题/结束语：有温度，不套路
+
+只输出 JSON，无 Markdown 标记。`;
 
 // ---- 健康检查 ----
 app.get('/api/health', (req, res) => {
@@ -127,7 +142,7 @@ app.post('/api/generate-ppt', async (req, res) => {
       });
     }
 
-    // 补齐默认值
+    // 补齐默认值（含新字段 imageKeyword / bgColor）
     parsed.slides = parsed.slides.map((s, i) => ({
       title: s.title || `第 ${i + 1} 页`,
       content: s.content || '',
@@ -141,6 +156,8 @@ app.post('/api/generate-ppt', async (req, res) => {
       image: '',
       note: '',
       subtitle: s.layout === 'title' ? (s.content || '') : '',
+      imageKeyword: s.imageKeyword || '',
+      bgColor: s.bgColor || '#1a1a2e',
     }));
 
     console.log(`✅ 解析成功: ${parsed.slides.length} 页 — "${parsed.title}"`);

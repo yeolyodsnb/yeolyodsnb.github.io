@@ -196,9 +196,9 @@ function importJson(file) {
   reader.readAsText(file);
 }
 let slides = [
-  { title: '欢迎使用 PPT 制作工具', subtitle: '', content: '点击左侧「+ 添加」创建新幻灯片\n选择版面布局和配色模板\n编辑完成后一键导出 PPTX 文件', content2: '', image: '', note: '', layout: 'content', fontSize: 'normal', textAlign: 'left', titlePos: 'top' },
-  { title: '五大版面布局', subtitle: '', content: '内容页：标题 + 要点列表，适合正文', content2: '标题页：居中大标题，适合封面/章节页\n图文混排：图片与文字并排展示\n双栏：左右对比内容\n图片页：全屏图片展示', image: '', note: '', layout: 'two-column', fontSize: 'normal', textAlign: 'left', titlePos: 'top' },
-  { title: '开始制作', subtitle: '祝你创作愉快 🎉', content: '', content2: '', image: '', note: '', layout: 'title', fontSize: 'large', textAlign: 'center', titlePos: 'middle' },
+  { title: '欢迎使用 PPT 制作工具', subtitle: '', content: '点击左侧「+ 添加」创建新幻灯片\n选择版面布局和配色模板\n编辑完成后一键导出 PPTX 文件', content2: '', image: '', note: '', layout: 'content', fontSize: 'normal', textAlign: 'left', titlePos: 'top', bgColor: '', imageKeyword: '' },
+  { title: '五大版面布局', subtitle: '', content: '内容页：标题 + 要点列表，适合正文', content2: '标题页：居中大标题，适合封面/章节页\n图文混排：图片与文字并排展示\n双栏：左右对比内容\n图片页：全屏图片展示', image: '', note: '', layout: 'two-column', fontSize: 'normal', textAlign: 'left', titlePos: 'top', bgColor: '', imageKeyword: '' },
+  { title: '开始制作', subtitle: '祝你创作愉快 🎉', content: '', content2: '', image: '', note: '', layout: 'title', fontSize: 'large', textAlign: 'center', titlePos: 'middle', bgColor: '', imageKeyword: '' },
 ];
 
 let currentIndex = 0;
@@ -365,8 +365,8 @@ function updatePreview() {
   previewTitle.style.textAlign = '';
   previewBody.style.textAlign = '';
 
-  // 背景
-  previewSlide.style.background = theme.bg;
+  // 背景（AI 指定色优先，其次用当前主题色）
+  previewSlide.style.background = (s.bgColor && s.bgColor.startsWith('#')) ? s.bgColor : theme.bg;
   previewSlide.style.justifyContent = s.titlePos === 'middle' ? 'center' : 'flex-start';
 
   // 标题
@@ -487,6 +487,7 @@ function addSlide() {
   const newSlide = {
     title: '新幻灯片', subtitle: '', content: '点击此处编辑内容', content2: '',
     image: '', note: '', layout: 'content', fontSize: 'normal', textAlign: 'left', titlePos: 'top',
+    bgColor: '', imageKeyword: '',
   };
   slides.push(newSlide);
   selectSlide(slides.length - 1);
@@ -541,7 +542,9 @@ function exportPPTX() {
   slides.forEach((slide, idx) => {
     const s = pptx.addSlide();
     const fs = FONT_SIZES[slide.fontSize] || FONT_SIZES.normal;
-    s.background = { color: theme.bg };
+    // 背景色：AI 指定优先，兜底用主题色
+    const slideBg = (slide.bgColor && slide.bgColor.startsWith('#')) ? slide.bgColor : theme.bg;
+    s.background = { color: slideBg };
 
     // 顶部装饰条
     s.addShape(pptx.ShapeType.rect, {
@@ -996,11 +999,13 @@ async function handleAIGenerate() {
     if (!confirm('当前幻灯片内容将被 AI 生成的内容替换，确定继续？')) return;
   }
 
-  // 显示进度
+  // ===== 阶段一：AI 构思内容 =====
   aiGenerateBtn.disabled = true;
   aiProgress.style.display = '';
-  aiGenerateBtn.textContent = '⏳ 生成中';
+  aiProgress.innerHTML = '<span class="spinner"></span> ✨ AI正在润色主题、构思大纲和内容...（预计 10-30 秒）';
+  aiGenerateBtn.textContent = '⏳ 构思中';
 
+  let data;
   try {
     const resp = await fetch(`${API_BASE}/api/generate-ppt`, {
       method: 'POST',
@@ -1013,7 +1018,7 @@ async function handleAIGenerate() {
       })(),
     });
 
-    const data = await resp.json();
+    data = await resp.json();
 
     if (!resp.ok) {
       throw new Error(data.error || '请求失败');
@@ -1021,47 +1026,107 @@ async function handleAIGenerate() {
 
     console.log('📥 AI 返回数据:', data);
     console.log(`  标题: "${data.title}" | 页数: ${data.slides.length}`);
-
-    // 渲染为幻灯片
-    renderAISlides(data);
-    toast(`✅ 已生成 ${data.slides.length} 页幻灯片！`);
   } catch (err) {
     console.error('❌ AI 生成失败:', err);
     toast('❌ 生成失败: ' + err.message);
-  } finally {
     aiGenerateBtn.disabled = false;
     aiProgress.style.display = 'none';
     aiGenerateBtn.textContent = '✨ 生成';
+    return;
   }
+
+  // ===== 阶段二：自动配色 & 渲染骨架 =====
+  aiProgress.innerHTML = '<span class="spinner"></span> 🎨 AI正在应用配色方案、渲染幻灯片...';
+  renderAISlides(data);
+
+  // ===== 阶段三：自动配图 =====
+  const slidesWithKeywords = data.slides
+    .map((s, i) => ({ ...s, index: i }))
+    .filter(s => s.imageKeyword && s.imageKeyword.trim());
+
+  if (slidesWithKeywords.length > 0) {
+    aiProgress.innerHTML = `<span class="spinner"></span> 🖼️ AI正在自动搜索配图...（${slidesWithKeywords.length} 页需要配图）`;
+
+    let done = 0;
+    const imagePromises = slidesWithKeywords.map(async (s) => {
+      const imgUrl = await fetchBestImage(s.imageKeyword.trim());
+      if (imgUrl) {
+        slides[s.index].image = imgUrl;
+        done++;
+        aiProgress.innerHTML = `<span class="spinner"></span> 🖼️ 配图进度：${done}/${slidesWithKeywords.length} — 刚完成「${s.title}」`;
+      }
+    });
+
+    await Promise.allSettled(imagePromises);
+    // 刷新当前选中页的预览
+    updatePreview();
+    toast(`✅ 生成完成！${slides.length} 页幻灯片，${done} 页已自动配图`);
+  } else {
+    toast(`✅ 已生成 ${slides.length} 页幻灯片！`);
+  }
+
+  // 恢复 UI
+  aiGenerateBtn.disabled = false;
+  aiProgress.style.display = 'none';
+  aiGenerateBtn.textContent = '✨ 生成';
 }
 
-// 将 AI 返回的 JSON 渲染为幻灯片
+// 快速搜图：根据关键词返回最佳图片 URL（用于 AI 自动配图）
+async function fetchBestImage(keyword) {
+  // 优先尝试 API 搜索
+  const apiKey = getApiKey();
+  if (apiKey) {
+    try {
+      const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(keyword)}&per_page=1&client_id=${apiKey}`;
+      const resp = await fetch(url, { signal: (() => { const c = new AbortController(); setTimeout(() => c.abort(), 8000); return c.signal; })() });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.results && data.results.length > 0) {
+          return data.results[0].urls.regular;
+        }
+      }
+    } catch (_) { /* 降级到 source 模式 */ }
+  }
+  // 降级：source.unsplash.com 兜底
+  return `https://source.unsplash.com/1200x900/?${encodeURIComponent(keyword)}`;
+}
+
+// 将 AI 返回的 JSON 渲染为幻灯片（含自动配色）
 function renderAISlides(data) {
   saveCurrent();
 
-  slides = data.slides.map((s, i) => ({
-    title: s.title || `第 ${i + 1} 页`,
-    subtitle: s.layout === 'title' ? (s.content || s.subtitle || '') : (s.subtitle || ''),
-    content: s.layout === 'title' ? '' : (s.content || ''),
-    content2: s.content2 || '',
-    image: s.image || '',
-    note: s.note || '',
-    layout: ['title', 'content', 'two-column', 'image-text', 'image-only'].includes(s.layout)
-      ? s.layout : 'content',
-    fontSize: s.fontSize || 'normal',
-    textAlign: s.textAlign || 'left',
-    titlePos: s.titlePos || (s.layout === 'title' ? 'middle' : 'top'),
-  }));
+  slides = data.slides.map((s, i) => {
+    // 智能标题位置：标题页居中，内容页顶部
+    const isTitlePage = s.layout === 'title';
+    // 标题页把 content 作为 subtitle
+    const subtitle = isTitlePage ? (s.content || s.subtitle || '') : (s.subtitle || '');
+    const content = isTitlePage ? '' : (s.content || '');
+
+    return {
+      title: s.title || `第 ${i + 1} 页`,
+      subtitle: subtitle,
+      content: content,
+      content2: s.content2 || '',
+      image: s.image || '',
+      note: s.note || '',
+      layout: ['title', 'content', 'two-column', 'image-text', 'image-only'].includes(s.layout)
+        ? s.layout : 'content',
+      fontSize: s.fontSize || 'normal',
+      textAlign: s.textAlign || 'left',
+      titlePos: s.titlePos || (isTitlePage ? 'middle' : 'top'),
+      bgColor: s.bgColor || '',
+      imageKeyword: s.imageKeyword || '',
+    };
+  });
 
   currentIndex = 0;
   renderSlideList();
   selectSlide(0);
   pushHistory();
 
-  // 如果是标题页，自动切换配色为更鲜艳的主题
-  console.log(`✅ 已渲染 ${slides.length} 页幻灯片:`);
+  console.log(`✅ 已渲染 ${slides.length} 页幻灯片（含自动配色）:`);
   slides.forEach((s, i) => {
-    console.log(`  #${i + 1} [${s.layout}] ${s.title}`);
+    console.log(`  #${i + 1} [${s.layout}] ${s.title} | bg:${s.bgColor || '默认'} | img:${s.imageKeyword || '无'}`);
   });
 }
 
