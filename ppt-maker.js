@@ -1236,24 +1236,30 @@ $('layoutPicker').addEventListener('click', (e) => {
   if (btn) setLayout(btn.dataset.layout);
 });
 
-// 主题切换：单击=当前页，双击=全部幻灯片
+// 主题切换：单击=当前页（立即），双击=全部幻灯片
 let themeClickTimer = null;
+let themeLastClicked = null;
 $('themePicker').addEventListener('click', (e) => {
   const dot = e.target.closest('.theme-dot');
   if (!dot) return;
   const themeName = dot.dataset.theme;
-  if (themeClickTimer) {
-    // 双击：应用到全部
+
+  // 立即应用到当前页
+  setTheme(themeName, false);
+
+  // 检测双击：同一颜色短时间内连点两次 → 应用到全部
+  if (themeClickTimer && themeLastClicked === themeName) {
     clearTimeout(themeClickTimer);
     themeClickTimer = null;
+    themeLastClicked = null;
     setTheme(themeName, true);
     return;
   }
-  // 单击：仅当前页（延迟判断）
+  themeLastClicked = themeName;
   themeClickTimer = setTimeout(() => {
     themeClickTimer = null;
-    setTheme(themeName, false);
-  }, 300);
+    themeLastClicked = null;
+  }, 400);
 });
 
 // ========== 快捷键 ==========
