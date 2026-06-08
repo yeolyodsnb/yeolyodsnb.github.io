@@ -28,5 +28,5 @@ cards.forEach(card => {
 
 // 点击导航链接后平滑滚动（已在 CSS 用 scroll-behavior 处理）
 // 输出欢迎信息
-console.log('🌟 欢迎来到我的个人主页！');
-console.log('—— 由 Claude Code 帮你在 D:\\我的项目 中创建');
+console.log('🌟 欢迎来到 yeol 的个人主页！');
+console.log('🚀 https://yeolyodsnb.github.io');
