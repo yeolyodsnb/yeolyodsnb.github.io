@@ -723,9 +723,14 @@ const imgSearchResults   = $('imgSearchResults');
 const imgSearchLoading   = $('imgSearchLoading');
 const openImgSearchBtn   = $('openImageSearchBtn');
 const closeImgSearchBtn  = $('closeImgSearchBtn');
+const imgRefreshBtn      = $('imgRefreshBtn');
 const apiKeyInput        = $('unsplashApiKeyInput');
 const apiKeyStatus       = $('apiKeyStatus');
 const apiKeySection      = $('apiKeySection');
+
+// 搜索状态（用于"换一批"刷新）
+let currentSearchQuery = '';
+let currentSearchPage = 1;
 
 // 从 localStorage 读取用户自己的 API Key
 function getApiKey() {
@@ -779,9 +784,9 @@ function closeImageSearch() {
 }
 
 // ========== 模式一：Unsplash API 搜索（需 Key） ==========
-async function searchImagesViaAPI(query, apiKey) {
+async function searchImagesViaAPI(query, apiKey, page = 1) {
   // 使用 Authorization Header 传递 Client-ID，Key 不会暴露在 URL 中
-  const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=12`;
+  const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=15&page=${page}`;
   const resp = await fetch(url, {
     headers: {
       'Authorization': 'Client-ID ' + apiKey
@@ -825,10 +830,10 @@ function hashStr(str) {
   return Math.abs(h);
 }
 
-function searchImagesViaSource(query) {
-  const base = hashStr(query + Date.now());
-  // 生成 12 张基于不同种子的随机图片
-  for (let n = 0; n < 12; n++) {
+function searchImagesViaSource(query, offset = 0) {
+  const base = hashStr(query + Date.now() + offset);
+  // 生成 15 张基于不同种子的随机图片
+  for (let n = 0; n < 15; n++) {
     const seed = (base + n * 137) % 1000;
     const thumbUrl = `https://picsum.photos/seed/${seed}/300/225`;
     const fullUrl  = `https://picsum.photos/seed/${seed}/1280/720`;
@@ -857,7 +862,9 @@ function searchImagesViaSource(query) {
 }
 
 // ========== 统一搜索入口 ==========
-async function searchImages(query) {
+async function searchImages(query, page = 1) {
+  currentSearchQuery = query;
+  currentSearchPage = page;
   imgSearchResults.innerHTML = '';
   imgSearchLoading.style.display = '';
   const apiKey = getApiKey();
@@ -865,7 +872,7 @@ async function searchImages(query) {
   try {
     if (apiKey) {
       // 优先使用 API 模式
-      const success = await searchImagesViaAPI(query, apiKey);
+      const success = await searchImagesViaAPI(query, apiKey, page);
       imgSearchLoading.style.display = 'none';
       if (success === false) {
         imgSearchResults.innerHTML = '<p class="img-search-empty">😕 没有找到相关图片，换个关键词试试</p>';
@@ -873,13 +880,13 @@ async function searchImages(query) {
     } else {
       // 无 Key，使用 Source 模式
       imgSearchLoading.style.display = 'none';
-      searchImagesViaSource(query);
+      searchImagesViaSource(query, page);
     }
   } catch (err) {
     console.error('API 搜索失败，降级到 Source 模式:', err);
     imgSearchLoading.style.display = 'none';
     imgSearchResults.innerHTML = '';
-    searchImagesViaSource(query);
+    searchImagesViaSource(query, page);
     // 如果之前有 Key 但失效了，提示用户
     if (apiKey) {
       setTimeout(() => toast('⚠️ API Key 无效，已自动切换到备用搜索'), 500);
@@ -890,7 +897,22 @@ async function searchImages(query) {
 // 触发搜索
 function triggerImageSearch() {
   const q = imgSearchInput.value.trim();
-  if (q) searchImages(q);
+  if (q) searchImages(q, 1);
+}
+
+// 换一批
+function refreshImageSearch() {
+  if (!currentSearchQuery) {
+    const q = imgSearchInput.value.trim();
+    if (q) {
+      searchImages(q, 1);
+    } else {
+      toast('请先输入关键词搜索');
+    }
+    return;
+  }
+  currentSearchPage++;
+  searchImages(currentSearchQuery, currentSearchPage);
 }
 
 // ========== AI 生成 PPT ==========
@@ -1022,6 +1044,7 @@ imgSearchOverlay.addEventListener('click', (e) => {
   if (e.target === imgSearchOverlay) closeImageSearch();
 });
 imgSearchBtn.addEventListener('click', triggerImageSearch);
+imgRefreshBtn.addEventListener('click', refreshImageSearch);
 imgSearchInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') triggerImageSearch();
 });

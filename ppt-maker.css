@@ -750,6 +750,28 @@
 
 .btn-search-go:hover { background: #0773c5; }
 
+.btn-search-refresh {
+  padding: 12px 16px;
+  background: #f8f9fa;
+  color: #555;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 15px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.btn-search-refresh:hover {
+  background: #e9ecef;
+  border-color: #ccc;
+}
+
+.btn-search-refresh:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* 快捷分类 */
 .img-search-cats {
   padding: 0 24px 14px;
