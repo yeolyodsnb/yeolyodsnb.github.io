@@ -29,6 +29,18 @@ const FONT_SIZES = {
   xlarge: { title: 34, body: 22, exportTitle: 54, exportBody: 32 },
 };
 
+// ========== AI 生成配置 ==========
+// 后端地址：本地开发用 localhost，部署后改为实际地址
+const API_BASE = (() => {
+  // 如果页面是通过 GitHub Pages 访问的，后端在本地运行
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return `http://localhost:${new URLSearchParams(window.location.search).get('port') || '3001'}`;
+  }
+  // 生产环境：默认连本地（可在此改为你的云服务器地址）
+  const savedBackend = localStorage.getItem('ai_backend_url');
+  return savedBackend || 'http://localhost:3001';
+})();
+
 // ========== 数据模型 ==========
 let slides = [
   { title: '欢迎使用 PPT 制作工具', subtitle: '', content: '点击左侧「+ 添加」创建新幻灯片\n选择版面布局和配色模板\n编辑完成后一键导出 PPTX 文件', content2: '', image: '', note: '', layout: 'content', fontSize: 'normal', textAlign: 'left', titlePos: 'top' },
@@ -706,6 +718,127 @@ function triggerImageSearch() {
   if (q) searchImages(q);
 }
 
+// ========== AI 生成 PPT ==========
+const aiTopicInput    = $('aiTopicInput');
+const aiSlideCount    = $('aiSlideCount');
+const aiGenerateBtn   = $('aiGenerateBtn');
+const aiProgress      = $('aiProgress');
+const aiStatusDot     = $('aiBackendStatus');
+
+// 检测后端是否在线
+async function checkBackendHealth() {
+  try {
+    const resp = await fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(3000) });
+    const data = await resp.json();
+    if (data.status === 'ok') {
+      aiStatusDot.innerHTML = '● 后端在线';
+      aiStatusDot.className = 'ai-status-dot online';
+      aiGenerateBtn.disabled = false;
+      console.log('✅ AI 后端连接正常:', API_BASE, '| 模型:', data.model, '| Key:', data.hasApiKey ? '已配置' : '未配置');
+      return true;
+    }
+  } catch (e) {
+    console.warn('⚠️ AI 后端未连接:', e.message);
+  }
+  aiStatusDot.innerHTML = '● 后端离线';
+  aiStatusDot.className = 'ai-status-dot offline';
+  aiGenerateBtn.disabled = true;
+  return false;
+}
+
+// AI 生成按钮点击
+async function handleAIGenerate() {
+  const topic = aiTopicInput.value.trim();
+  const slideCount = parseInt(aiSlideCount.value) || 6;
+
+  if (!topic) {
+    toast('请先输入 PPT 主题');
+    aiTopicInput.focus();
+    return;
+  }
+
+  // 先检查后端
+  const healthy = await checkBackendHealth();
+  if (!healthy) {
+    toast('⚠️ AI 后端未启动，请在项目目录运行 node server.js');
+    return;
+  }
+
+  // 确认覆盖
+  if (slides.length > 0 && slides[0].title !== '新幻灯片') {
+    if (!confirm('当前幻灯片内容将被 AI 生成的内容替换，确定继续？')) return;
+  }
+
+  // 显示进度
+  aiGenerateBtn.disabled = true;
+  aiProgress.style.display = '';
+  aiGenerateBtn.textContent = '⏳ 生成中';
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/generate-ppt`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic, slideCount }),
+      signal: AbortSignal.timeout(90000),
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      throw new Error(data.error || '请求失败');
+    }
+
+    console.log('📥 AI 返回数据:', data);
+    console.log(`  标题: "${data.title}" | 页数: ${data.slides.length}`);
+
+    // 渲染为幻灯片
+    renderAISlides(data);
+    toast(`✅ 已生成 ${data.slides.length} 页幻灯片！`);
+  } catch (err) {
+    console.error('❌ AI 生成失败:', err);
+    toast('❌ 生成失败: ' + err.message);
+  } finally {
+    aiGenerateBtn.disabled = false;
+    aiProgress.style.display = 'none';
+    aiGenerateBtn.textContent = '✨ 生成';
+  }
+}
+
+// 将 AI 返回的 JSON 渲染为幻灯片
+function renderAISlides(data) {
+  saveCurrent();
+
+  slides = data.slides.map((s, i) => ({
+    title: s.title || `第 ${i + 1} 页`,
+    subtitle: s.layout === 'title' ? (s.content || s.subtitle || '') : (s.subtitle || ''),
+    content: s.layout === 'title' ? '' : (s.content || ''),
+    content2: s.content2 || '',
+    image: s.image || '',
+    note: s.note || '',
+    layout: ['title', 'content', 'two-column', 'image-text', 'image-only'].includes(s.layout)
+      ? s.layout : 'content',
+    fontSize: s.fontSize || 'normal',
+    textAlign: s.textAlign || 'left',
+    titlePos: s.titlePos || (s.layout === 'title' ? 'middle' : 'top'),
+  }));
+
+  currentIndex = 0;
+  renderSlideList();
+  selectSlide(0);
+
+  // 如果是标题页，自动切换配色为更鲜艳的主题
+  console.log(`✅ 已渲染 ${slides.length} 页幻灯片:`);
+  slides.forEach((s, i) => {
+    console.log(`  #${i + 1} [${s.layout}] ${s.title}`);
+  });
+}
+
+// 回车触发生成
+aiTopicInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') handleAIGenerate();
+});
+aiGenerateBtn.addEventListener('click', handleAIGenerate);
+
 // ========== 事件监听（图片搜索） ==========
 openImgSearchBtn.addEventListener('click', openImageSearch);
 closeImgSearchBtn.addEventListener('click', closeImageSearch);
@@ -778,6 +911,11 @@ renderSlideList();
 selectSlide(0);
 setTheme('purple');
 
+// 检测 AI 后端
+checkBackendHealth();
+
 console.log('📊 PPT Maker Pro 已就绪');
+console.log('   AI 后端:', API_BASE);
 console.log('   快捷键: Ctrl+S 导出 | Ctrl+N 新建 | Ctrl+D 复制 | Ctrl+↑↓ 排序');
 console.log('   图片搜索: 点击「🔍 搜图」搜索 Unsplash 免费图片');
+console.log('   AI 生成: 输入主题 → 点击 ✨生成 → 自动填充幻灯片');

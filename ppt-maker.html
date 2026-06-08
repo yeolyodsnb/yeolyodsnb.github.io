@@ -50,6 +50,34 @@
     <!-- ====== 右侧：编辑区 ====== -->
     <section class="slide-editor">
 
+      <!-- ====== AI 一键生成区 ====== -->
+      <div class="ai-generate-panel" id="aiPanel">
+        <div class="ai-panel-header">
+          <span class="ai-panel-title">🤖 AI 一键生成 PPT</span>
+          <span class="ai-panel-badge">DeepSeek</span>
+        </div>
+        <div class="ai-panel-body">
+          <div class="ai-input-row">
+            <input id="aiTopicInput" type="text" placeholder="输入主题，如：人工智能发展史、新能源汽车趋势..." maxlength="80">
+            <div class="ai-slide-count">
+              <label for="aiSlideCount">页数</label>
+              <input id="aiSlideCount" type="number" value="6" min="3" max="15" step="1">
+            </div>
+            <button id="aiGenerateBtn" class="btn-ai-generate">✨ 生成</button>
+          </div>
+          <p class="ai-panel-hint">
+            ⚡ AI 将自动生成完整大纲和内容 · 每页含标题和要点 · 生成后可手动编辑
+            <span id="aiBackendStatus" class="ai-status-dot" title="后端状态检测中...">● 检测中</span>
+          </p>
+        </div>
+        <!-- 生成进度 -->
+        <div id="aiProgress" class="ai-progress" style="display:none">
+          <span class="spinner"></span> AI 正在构思中，预计 10-30 秒...
+        </div>
+      </div>
+
+      <!-- 编辑区头部 -->
+
       <!-- 第一行：版面布局 + 配色模板 -->
       <div class="editor-row-2col">
         <div class="editor-group">
