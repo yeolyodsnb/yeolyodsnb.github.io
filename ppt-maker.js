@@ -465,6 +465,51 @@ function updatePreview(direction) {
     default:
       renderPreviewLines(previewBody, s.content, fs.body, theme.text);
   }
+
+  // 智能遮罩：有背景图时叠加半透明层保护文字可读性
+  const hasBgImage = s.image && (
+    s.layout === 'content' || s.layout === 'image-text' ||
+    s.layout === 'image-only'
+  );
+  if (hasBgImage) {
+    previewSlide.classList.add('has-bg-img');
+  } else {
+    previewSlide.classList.remove('has-bg-img');
+  }
+
+  // 文字自适应：溢出时自动缩小字号
+  requestAnimationFrame(() => autoFitText());
+}
+
+// 文字自适应：检测溢出并逐级缩小字号，确保内容完整显示
+function autoFitText() {
+  const textEls = previewSlide.querySelectorAll('.preview-text');
+  if (textEls.length === 0 || !previewSlide.parentElement) return;
+
+  const slideHeight = previewSlide.clientHeight;
+  const slidePadding = parseFloat(getComputedStyle(previewSlide).paddingTop) +
+                       parseFloat(getComputedStyle(previewSlide).paddingBottom);
+  const availHeight = slideHeight - slidePadding - 60; // 留出标题空间
+
+  // 计算文本总高度
+  let totalTextH = 0;
+  textEls.forEach(el => { totalTextH += el.scrollHeight; });
+
+  if (totalTextH <= availHeight) return; // 没溢出，无需调整
+
+  // 逐级缩小，每次减 1px，最多减 10px
+  let reduceBy = 0;
+  while (totalTextH > availHeight && reduceBy < 10) {
+    reduceBy++;
+    textEls.forEach(el => {
+      const currentSize = parseFloat(getComputedStyle(el).fontSize);
+      el.style.fontSize = (currentSize - 1) + 'px';
+      el.style.lineHeight = '1.5';
+    });
+    // 重新计算高度
+    totalTextH = 0;
+    textEls.forEach(el => { totalTextH += el.scrollHeight; });
+  }
 }
 
 function renderPreviewLines(container, text, fontSize, color) {

@@ -403,6 +403,11 @@
 /* 图片入场 */
 .preview-slide img {
   animation: imgReveal 0.5s ease both;
+  max-width: 100%;
+  max-height: 160px;
+  border-radius: 4px;
+  margin-top: 8px;
+  object-fit: cover;
 }
 
 @keyframes imgReveal {
@@ -634,14 +639,6 @@
   transition: color 0.3s, font-size 0.2s;
 }
 
-.preview-slide img {
-  max-width: 100%;
-  max-height: 160px;
-  border-radius: 4px;
-  margin-top: 8px;
-  object-fit: contain;
-}
-
 /* 双栏预览 */
 .preview-two-col {
   display: flex;
@@ -695,6 +692,39 @@
   width: 45%;
   max-height: 200px;
   margin: 0;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+/* ========== 智能遮罩：有背景图时叠加半透明层 + 文字阴影 ========== */
+.preview-slide.has-bg-img {
+  position: relative;
+}
+
+.preview-slide.has-bg-img::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.38);
+  border-radius: inherit;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.preview-slide.has-bg-img h3,
+.preview-slide.has-bg-img .preview-subtitle,
+.preview-slide.has-bg-img .preview-text {
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7), 0 0 8px rgba(0, 0, 0, 0.4);
+}
+
+/* 图片页文字覆盖在图片上方 */
+.preview-slide.image-layout h3,
+.preview-slide.image-layout .preview-subtitle {
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.5);
 }
 
 /* 活跃导航 */
