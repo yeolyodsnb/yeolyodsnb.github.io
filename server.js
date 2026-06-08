@@ -165,15 +165,21 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// ---- 启动 ----
-app.listen(PORT, () => {
-  console.log('');
-  console.log('╔══════════════════════════════════════╗');
-  console.log('║   🚀 AI PPT 生成服务已启动           ║');
-  console.log(`║   地址: http://localhost:${PORT}         ║`);
-  console.log('║   接口: POST /api/generate-ppt       ║');
-  console.log('║   模型: deepseek-chat                ║');
-  console.log(`║   API Key: ${DEEPSEEK_API_KEY ? '✅ 已配置' : '❌ 未配置'}                    ║`);
-  console.log('╚══════════════════════════════════════╝');
-  console.log('');
-});
+// ---- 启动（本地开发）/ Vercel Serverless 导出 ----
+if (require.main === module) {
+  // 本地开发模式
+  app.listen(PORT, () => {
+    console.log('');
+    console.log('╔══════════════════════════════════════╗');
+    console.log('║   🚀 AI PPT 生成服务已启动           ║');
+    console.log(`║   地址: http://localhost:${PORT}         ║`);
+    console.log('║   接口: POST /api/generate-ppt       ║');
+    console.log('║   模型: deepseek-chat                ║');
+    console.log(`║   API Key: ${DEEPSEEK_API_KEY ? '✅ 已配置' : '❌ 未配置'}                    ║`);
+    console.log('╚══════════════════════════════════════╝');
+    console.log('');
+  });
+}
+
+// Vercel Serverless 需要导出 app
+module.exports = app;

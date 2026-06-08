@@ -30,16 +30,23 @@ const FONT_SIZES = {
 };
 
 // ========== AI 生成配置 ==========
-// 后端地址：GitHub Pages 访问时自动连 Vercel 云端，本地开发连 localhost
+// 后端地址配置
+// 本地开发 → localhost:3001
+// 线上版本 → 自动检测：如果当前域名有后端就用当前域名，否则使用 localStorage 保存的地址
 const API_BASE = (() => {
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     // 本地开发：连本地后端，支持自定义端口
     return `http://localhost:${new URLSearchParams(window.location.search).get('port') || '3001'}`;
   }
-  // 生产环境：使用当前域名（Vercel 静态文件和 API 在同一域名下）
-  // 用户也可通过 localStorage 覆盖为自定义后端地址
+  // 生产环境：优先使用 localStorage 中用户保存的后端地址
   const savedBackend = localStorage.getItem('ai_backend_url');
-  return savedBackend || (window.location.origin);
+  if (savedBackend) return savedBackend;
+  // GitHub Pages 默认无后端，返回空字符串（checkBackendHealth 会处理）
+  if (window.location.hostname.endsWith('github.io')) {
+    return '';
+  }
+  // 其他生产环境（如 Vercel）使用当前域名
+  return window.location.origin;
 })();
 
 // ========== 撤销/重做历史 ==========
@@ -935,6 +942,14 @@ async function timeoutFetch(url, init, ms) {
 
 // 检测后端是否在线
 async function checkBackendHealth() {
+  if (!API_BASE) {
+    aiStatusDot.innerHTML = '● 未配置后端';
+    aiStatusDot.className = 'ai-status-dot offline';
+    aiStatusDot.title = '请在下方配置后端地址，或访问 localhost:3001 使用本地后端';
+    aiGenerateBtn.disabled = true;
+    console.log('ℹ️ GitHub Pages 无内置后端，请在控制台执行 localStorage.setItem("ai_backend_url", "https://你的-vercel-域名.vercel.app") 后刷新');
+    return false;
+  }
   console.log('🔍 检测后端:', `${API_BASE}/api/health`);
   try {
     const resp = await timeoutFetch(`${API_BASE}/api/health`, {}, 3000);
