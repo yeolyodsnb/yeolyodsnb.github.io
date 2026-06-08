@@ -10,7 +10,6 @@
 </head>
 <body>
 
-  <!-- 导航栏 -->
   <nav>
     <div class="nav-inner">
       <a href="index.html" class="logo">🌟 yeol</a>
@@ -24,65 +23,144 @@
     </div>
   </nav>
 
-  <!-- 主内容 -->
   <main class="ppt-maker-container">
-    <!-- 左侧：幻灯片列表 -->
+
+    <!-- ====== 左侧：幻灯片列表 ====== -->
     <aside class="slide-sidebar">
       <div class="sidebar-header">
         <h2>📑 幻灯片</h2>
-        <button id="addSlideBtn" class="btn-small" title="添加新幻灯片">+ 添加</button>
+        <button id="addSlideBtn" class="btn-small" title="添加新幻灯片 (Ctrl+N)">+ 添加</button>
       </div>
       <ul id="slideList" class="slide-list"></ul>
+      <div class="slide-actions">
+        <button id="moveUpBtn" class="btn-icon" title="上移">⬆</button>
+        <button id="moveDownBtn" class="btn-icon" title="下移">⬇</button>
+        <button id="duplicateSlideBtn" class="btn-icon" title="复制">📋</button>
+        <button id="deleteSlideBtn" class="btn-icon-danger" title="删除">🗑</button>
+      </div>
       <div class="sidebar-footer">
+        <div class="export-filename">
+          <label for="exportFileName">📦 导出文件名</label>
+          <input id="exportFileName" type="text" value="我的演示文稿" placeholder="输入文件名...">
+        </div>
         <button id="exportBtn" class="btn-export">📥 导出 PPTX</button>
       </div>
     </aside>
 
-    <!-- 右侧：编辑区域 -->
+    <!-- ====== 右侧：编辑区 ====== -->
     <section class="slide-editor">
-      <div class="editor-header">
-        <h2>✏️ 编辑幻灯片</h2>
-        <button id="deleteSlideBtn" class="btn-danger" title="删除当前幻灯片">🗑 删除</button>
+
+      <!-- 第一行：版面布局 + 配色模板 -->
+      <div class="editor-row-2col">
+        <div class="editor-group">
+          <label>📐 版面布局</label>
+          <div class="layout-picker" id="layoutPicker">
+            <button class="layout-btn active" data-layout="content" title="标题 + 要点列表">
+              <span class="layout-icon">📋</span><span class="layout-label">内容页</span>
+            </button>
+            <button class="layout-btn" data-layout="title" title="居中标题页">
+              <span class="layout-icon">🎯</span><span class="layout-label">标题页</span>
+            </button>
+            <button class="layout-btn" data-layout="image-text" title="左图右文">
+              <span class="layout-icon">🖼️</span><span class="layout-label">图文混排</span>
+            </button>
+            <button class="layout-btn" data-layout="two-column" title="双栏对比">
+              <span class="layout-icon">⬅➡</span><span class="layout-label">双栏</span>
+            </button>
+            <button class="layout-btn" data-layout="image-only" title="全屏图片">
+              <span class="layout-icon">🖼</span><span class="layout-label">图片页</span>
+            </button>
+          </div>
+        </div>
+        <div class="editor-group">
+          <label>🎨 配色模板</label>
+          <div class="theme-picker" id="themePicker">
+            <button class="theme-dot active" data-theme="purple" style="background:#6c5ce7" title="紫色"></button>
+            <button class="theme-dot" data-theme="blue"   style="background:#0984e3" title="蓝色"></button>
+            <button class="theme-dot" data-theme="green"  style="background:#00b894" title="绿色"></button>
+            <button class="theme-dot" data-theme="orange" style="background:#e17055" title="橙色"></button>
+            <button class="theme-dot" data-theme="dark"   style="background:#2d3436" title="深色"></button>
+            <button class="theme-dot" data-theme="red"    style="background:#d63031" title="红色"></button>
+            <button class="theme-dot" data-theme="teal"   style="background:#00a8a8" title="青色"></button>
+            <button class="theme-dot" data-theme="pink"   style="background:#e84393" title="粉红"></button>
+          </div>
+        </div>
       </div>
 
-      <!-- 模板选择 -->
-      <div class="editor-group">
-        <label>🎨 配色模板</label>
-        <div class="theme-picker" id="themePicker">
-          <button class="theme-dot active" data-theme="purple" style="background:#6c5ce7" title="紫色"></button>
-          <button class="theme-dot" data-theme="blue" style="background:#0984e3" title="蓝色"></button>
-          <button class="theme-dot" data-theme="green" style="background:#00b894" title="绿色"></button>
-          <button class="theme-dot" data-theme="orange" style="background:#e17055" title="橙色"></button>
-          <button class="theme-dot" data-theme="dark" style="background:#2d3436" title="深色"></button>
-          <button class="theme-dot" data-theme="red" style="background:#d63031" title="红色"></button>
+      <!-- 第二行：格式控制 -->
+      <div class="editor-row-3col">
+        <div class="editor-group">
+          <label for="fontSize">🔤 字号</label>
+          <select id="fontSize" class="form-select">
+            <option value="small">小号 (14pt)</option>
+            <option value="normal" selected>中号 (18pt)</option>
+            <option value="large">大号 (24pt)</option>
+            <option value="xlarge">超大 (32pt)</option>
+          </select>
+        </div>
+        <div class="editor-group">
+          <label for="textAlign">📏 对齐</label>
+          <select id="textAlign" class="form-select">
+            <option value="left" selected>左对齐</option>
+            <option value="center">居中</option>
+            <option value="right">右对齐</option>
+          </select>
+        </div>
+        <div class="editor-group">
+          <label for="titlePosition">📍 标题位置</label>
+          <select id="titlePosition" class="form-select">
+            <option value="top" selected>顶部</option>
+            <option value="middle">中间</option>
+          </select>
         </div>
       </div>
 
       <!-- 幻灯片标题 -->
       <div class="editor-group">
         <label for="slideTitle">📌 幻灯片标题</label>
-        <input id="slideTitle" type="text" placeholder="输入标题..." maxlength="100">
+        <input id="slideTitle" type="text" placeholder="输入标题..." maxlength="120">
       </div>
 
-      <!-- 幻灯片内容 -->
-      <div class="editor-group">
-        <label for="slideContent">📝 内容</label>
-        <textarea id="slideContent" rows="8" placeholder="输入内容，每行一个要点..."></textarea>
+      <!-- 副标题（标题页布局显示） -->
+      <div class="editor-group" id="subtitleGroup" style="display:none">
+        <label for="slideSubtitle">💬 副标题</label>
+        <input id="slideSubtitle" type="text" placeholder="输入副标题、日期或作者..." maxlength="120">
       </div>
 
-      <!-- 图片（可选） -->
-      <div class="editor-group">
+      <!-- 内容区（内容页/双栏布局显示） -->
+      <div class="editor-group" id="contentGroup">
+        <label for="slideContent">📝 内容 <span class="hint">（每行 = 一个要点）</span></label>
+        <textarea id="slideContent" rows="6" placeholder="输入内容，每行自动变成一个要点..."></textarea>
+      </div>
+
+      <!-- 第二栏内容（双栏布局显示） -->
+      <div class="editor-group" id="content2Group" style="display:none">
+        <label for="slideContent2">📝 第二栏内容</label>
+        <textarea id="slideContent2" rows="6" placeholder="右侧栏的内容..."></textarea>
+      </div>
+
+      <!-- 图片链接 -->
+      <div class="editor-group" id="imageGroup">
         <label for="slideImage">🖼️ 图片链接（可选）</label>
         <input id="slideImage" type="text" placeholder="粘贴图片URL...">
       </div>
 
+      <!-- 备注 -->
+      <div class="editor-group">
+        <label for="slideNote">📒 演讲者备注（导出后在PPT中可见）</label>
+        <input id="slideNote" type="text" placeholder="给自己看的备注，不会显示在幻灯片上...">
+      </div>
+
       <!-- 预览区 -->
       <div class="editor-group">
-        <label>👁 预览</label>
+        <label>👁 实时预览</label>
         <div id="previewArea" class="preview-box">
           <div id="previewContent" class="preview-slide">
             <h3 id="previewTitle">标题预览</h3>
-            <div id="previewBody">内容预览</div>
+            <p id="previewSubtitle" class="preview-subtitle" style="display:none"></p>
+            <div id="previewBody"></div>
+            <div id="previewBody2" style="display:none"></div>
+            <img id="previewImage" src="" alt="" style="display:none">
           </div>
         </div>
       </div>
