@@ -41,9 +41,9 @@ const API_BASE = (() => {
   // 生产环境：优先使用 localStorage 中用户保存的后端地址
   const savedBackend = localStorage.getItem('ai_backend_url');
   if (savedBackend) return savedBackend;
-  // GitHub Pages 默认无后端，返回空字符串（checkBackendHealth 会处理）
+  // GitHub Pages 默认连接 Vercel 后端
   if (window.location.hostname.endsWith('github.io')) {
-    return '';
+    return 'https://ppt-maker-api.vercel.app';
   }
   // 其他生产环境（如 Vercel）使用当前域名
   return window.location.origin;
