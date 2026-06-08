@@ -922,10 +922,22 @@ const aiGenerateBtn   = $('aiGenerateBtn');
 const aiProgress      = $('aiProgress');
 const aiStatusDot     = $('aiBackendStatus');
 
+// 兼容性超时 fetch（兼容旧浏览器，替代 AbortSignal.timeout）
+async function timeoutFetch(url, init, ms) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // 检测后端是否在线
 async function checkBackendHealth() {
+  console.log('🔍 检测后端:', `${API_BASE}/api/health`);
   try {
-    const resp = await fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(3000) });
+    const resp = await timeoutFetch(`${API_BASE}/api/health`, {}, 3000);
     const data = await resp.json();
     if (data.status === 'ok') {
       aiStatusDot.innerHTML = '● 后端在线';
@@ -976,7 +988,11 @@ async function handleAIGenerate() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ topic, slideCount }),
-      signal: AbortSignal.timeout(90000),
+      signal: (() => {
+        const ctrl = new AbortController();
+        setTimeout(() => ctrl.abort(), 90000);
+        return ctrl.signal;
+      })(),
     });
 
     const data = await resp.json();
